@@ -425,9 +425,9 @@ exp_minus:
 	ld b, a;
 	ld a, period;
 	rst print_a;
-	ld a, zero;
 
 out_zeros:
+	ld a, zero;
 	rst print_a;
 	djnz out_zeros;
 	jr test_done;
