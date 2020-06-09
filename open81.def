@@ -1,0 +1,281 @@
+;	// Open81 - A free firmware for the Timex TS1000 / Sinclair ZX81
+;	// Copyright (C) 1981 Nine Tiles Networks Ltd.
+
+;	// This program is free software; you can redistribute it and/or
+;	// modify it under the terms of the GNU General Public License
+;	// as published by the Free Software Foundation; either version 2
+;	// of the License, or (at your option) any later version.
+
+;	// This program is distributed in the hope that it will be useful,
+;	// but WITHOUT ANY WARRANTY; without even the implied warranty of
+;	// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;	// GNU General Public License for more details.
+
+;	// You should have received a copy of the GNU General Public License
+;	// along with this program; if not, write to the Free Software
+;	// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+;	// THE 'TEST CHARACTERS'
+
+double_quote	equ	$0b;
+dollar			equ	$0d;
+open_bracket	equ	$10;
+close_bracket	equ	$11;
+close_angle		equ	$12;
+equals			equ	$14;
+plus			equ	$15;
+minus			equ	$16;
+comma			equ	$1a;
+period			equ	$1b;
+zero			equ	$1c;
+capital_a		equ	$26;
+capital_e		equ	$2a;
+
+;	// THE 'CONTROL CHARACTERS'
+
+ctrl_up			equ	$70;
+ctrl_down		equ	$71;
+ctrl_left		equ	$72;
+ctrl_right		equ	$73;
+ctrl_graphics	equ	$74;
+ctrl_edit		equ	$75;
+ctrl_newline	equ	$76;
+ctrl_rubout		equ	$77;
+ctrl_kl			equ	$78;
+ctrl_function	equ	$79;
+ctrl_number		equ	$7e;
+
+;	// THE 'TOKENS'
+
+tk_rnd			equ	$40;
+tk_inkeys		equ	$41;
+tk_pi			equ	$42;
+tk_dquote		equ	$c0;
+tk_at			equ	$c1;
+tk_tab			equ	$c2;
+tk_code			equ	$c4;
+tk_val			equ	$c5;
+tk_len			equ	$c6;
+tk_sin			equ	$c7;
+tk_cos			equ	$c8;
+tk_tan			equ	$c9;
+tk_asn			equ	$ca;
+tk_acs			equ	$cb;
+tk_atn			equ	$cc;
+tk_ln			equ	$cd;
+tk_exp			equ	$ce;
+tk_int			equ	$cf;
+tk_sqr			equ	$d0;
+tk_sgn			equ	$d1;
+tk_abs			equ	$d2;
+tk_peek			equ	$d3;
+tk_usr			equ	$d4;
+tk_strS			equ	$d5;
+tk_chrS			equ	$d6;
+tk_not			equ	$d7;
+tk_dstar		equ	$d8;
+tk_or			equ	$d9;
+tk_and			equ	$da;
+tk_l_eql		equ	$db;
+tk_gr_eq		equ	$dc;
+tk_neql			equ	$dd;
+tk_then			equ	$de;
+tk_to			equ	$df;
+tk_step			equ	$e0;
+tk_lprint		equ	$e1;
+tk_llist		equ	$e2;
+tk_stop			equ	$e3;
+tk_slow			equ	$e4;
+tk_fast			equ	$e5;
+
+
+;	// THE 'I/O PORTS'
+
+nmigen		equ	$fd
+
+;	// THE 'RESTARTS'
+
+start			equ	$00;
+error_1			equ	$08;
+print_a			equ	$10;
+get_ch			equ	$18;
+next_ch			equ	$20;
+fp_calc			equ	$28;
+bc_spaces		equ	$30;
+interrupt		equ	$38;
+
+;	// THE 'COMMAND CLASSES'
+
+no_f_ops		equ	$00;
+var_rqd			equ	$01;
+expr_num_str	equ	$02;
+num_exp_0		equ	$03;
+chr_var			equ	$04;
+var_syn			equ	$05;
+num_exp			equ	$06;
+
+;	// THE 'ERROR REPORTS'
+
+next_without_for		equ	$00;
+missing_variable		equ	$01;
+subscript_out_of_range	equ	$02;
+out_of_ram				equ	$03;
+insufficient_room		equ	$04;
+arithmetic_overflow		equ	$05;
+return_without_gosub	equ	$06;
+input_as_direct_command	equ	$07;
+stop_command			equ	$08;
+invalid_argument		equ	$09;
+integer_out_of_range	equ	$0a;
+no_numeric_value		equ	$0b;
+break_pressed			equ	$0c;
+not_used				equ	$0d;
+no_name_supplied		equ	$0e;
+
+;	// THE 'CALCULATOR' INSTRUCTIONS
+
+jump_true		equ	$00;
+exchange		equ	$01;
+delete			equ	$02;
+subtract		equ	$03;
+multiply		equ	$04;
+division		equ	$05;
+to_power		equ	$06;
+fn_or			equ	$07;
+no_and_no		equ	$08;
+no_l_eql		equ	$09;
+no_gr_eql		equ	$0a;
+nos_neql		equ	$0b;
+no_grtr			equ	$0c;
+no_less			equ	$0d;
+nos_eql			equ	$0e;
+addition		equ	$0f;
+str_and_no		equ	$10;
+str_l_eql		equ	$11;
+str_gr_eql		equ	$12;
+strs_neql		equ	$13;
+str_grtr		equ	$14;
+str_less		equ	$15;
+strs_eql		equ	$16;
+strs_add		equ	$17;
+negate			equ	$18;
+code			equ	$19;
+val				equ	$1a;
+len				equ	$1b;
+sin				equ	$1c;
+cos				equ	$1d;
+tan				equ	$1e;
+asn				equ	$1f;
+acs				equ	$20;
+atn				equ	$21;
+ln				equ	$22;
+exp				equ	$23;
+int				equ	$24;
+sqr				equ	$25;
+sgn				equ	$26;
+abs				equ	$27;
+peek			equ	$28;
+usr				equ	$29;
+strS			equ	$2a;
+chrS			equ	$2b;
+fn_not			equ	$2c;
+duplicate		equ	$2d;
+n_mod_m			equ	$2e;
+jump			equ	$2f;
+stk_data		equ	$30;
+dec_jr_nz		equ	$31;
+less_0			equ	$32;
+greater_0		equ	$33;
+end_calc		equ	$34;
+get_argt		equ	$35;
+truncate		equ	$36;
+calc_2			equ	$37;
+e_to_fp			equ	$38;
+
+stk_zero		equ	$a0;
+stk_one			equ	$a1;
+stk_half		equ	$a2;
+stk_pi_div_2	equ	$a3;
+stk_ten			equ	$a4;
+
+st_mem_0		equ	$c0;
+st_mem_1		equ	$c1;
+st_mem_2		equ	$c2;
+st_mem_3		equ	$c3;
+st_mem_4		equ	$c4;
+
+get_mem_0		equ	$e0;
+get_mem_1		equ	$e1;
+get_mem_2		equ	$e2;
+get_mem_3		equ	$e3;
+get_mem_4		equ	$e4;
+
+
+;THE 'SYSTEM VARIABLES'
+
+sys_var		equ $4000;
+err_nr		equ sys_var;		// iy + $00
+_err_nr		equ $00;
+flags		equ err_nr + 1;		// iy + $01
+_flags		equ $01;
+err_sp		equ flags + 1;		// iy + $02
+ramtop		equ err_sp + 2;		// iy + $04
+ramtop_hi	equ ramtop + 1;		// iy + $05
+mode		equ ramtop + 2;		// iy + $06
+ppc			equ mode + 1;		// iy + $07
+ppc_hi		equ ppc + 1;		// iy + $08
+_ppc_hi		equ $08;
+versn		equ ppc + 2;		// iy + $09
+e_ppc		equ versn + 1;		// iy + $0a
+e_ppc_hi	equ e_ppc + 1;		// iy + $0b
+d_file		equ e_ppc + 2;		// iy + $0c
+df_cc		equ d_file + 2;		// iy + $0e
+vars		equ df_cc + 2;		// iy + $10
+dest		equ vars + 2;		// iy + $12
+e_line		equ dest + 2;		// iy + $14
+e_line_hi	equ dest +3;		// iy + $15
+_e_line_hi	equ $15;
+ch_add		equ e_line + 2;		// iy + $16
+x_ptr		equ ch_add + 2;		// iy + $18
+x_ptr_hi	equ ch_add + 2;		// iy + $19
+_x_ptr_hi	equ $19;
+stkbot		equ x_ptr + 2;		// iy + $1a
+stkend		equ stkbot + 2;		// iy + $1c
+stkend_h	equ stkend + 1;		// iy + $1d
+breg		equ stkend + 2;		// iy + $1e
+_breg		equ $1e;
+mem			equ breg + 1;		// iy + $1f
+df_size		equ mem +3;			// iy + $22
+_df_size	equ $22;
+s_top		equ df_size + 1;	// iy + $23
+last_k		equ s_top + 2;		// iy + $25
+debounce	equ last_k + 2;		// iy + $27
+margin		equ debounce + 1;	// iy + $28
+_margin		equ $28;
+nxtlin		equ margin + 1;		// iy + $29
+oldppc		equ nxtlin + 2;		// iy + $2b
+flagx		equ oldppc + 2;		// iy + $2d
+_flagx		equ $2d
+strlen		equ flagx + 1;		// iy + $2e
+_strlen		equ $2e;
+t_addr		equ strlen + 2;		// iy + $30
+seed		equ t_addr + 2;		// iy + $32
+frames		equ seed + 2;		// iy + $34
+frames_hi	equ seed	+3;		// iy + $35
+_frames_hi	equ $35;
+coords		equ frames + 2;		// iy + $36
+pr_cc		equ coords + 2;		// iy + $38
+_pr_cc		equ $38;
+s_posn		equ pr_cc + 1;		// iy + $39
+s_posn_lo	equ pr_cc + 1;		// iy + $39
+_s_posn_lo	equ $39;
+s_posn_hi	equ pr_cc + 2;		// iy + $3a
+_s_posn_hi	equ $3a;
+cdflag		equ s_posn + 2;		// iy + $3b
+_cdflag		equ $3b;
+prbuff		equ cdflag + 1
+prbuff_end	equ prbuff +32
+mem_0_1		equ prbuff_end + 1;	// iy + $5d
+membot		equ $5d;
+_membot		equ $5d;
+program		equ $407d;
