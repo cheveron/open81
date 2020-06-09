@@ -19,14 +19,17 @@
 ;	// The Complete Timex TS1000 / Sinclair ZX81 ROM disassembly
 ;	// by Dr. Ian Logan & Dr. Frank O'Hara
 
+
+	org $1915;						// addresses prior to this point are identical to version 2
+
 ;	// THE 'CALCULATOR' TABLES
 
 table_con:
-	defb $00, $b0, $00;				// 0
-	defb $31, $00;					// 1
-	defb $30, $00;					// 1/2
-	defb $f1, $49, $0f, $da, $a2;	// PI/2
-	defb $34, $20;					// 10
+	defb $00, $00, $00, $00, $00;	// 0
+	defb $81, $00, $00, $00, $00;	// 1
+	defb $80, $00, $00, $00, $00;	// 1/2
+	defb $81, $49, $0f, $da, $a2;	// PI/2
+	defb $84, $20, $00, $00, $00;	// 10
 
 table_adr:
 	defw fp_jump_true;
@@ -197,7 +200,6 @@ stk_const:
 	push hl;
 	exx;
 	ex (sp), hl;
-	push bc;
 	ld a, (hl);
 	and %11000000;
 	rlca;
@@ -217,9 +219,7 @@ form_exp:
 	sub c;
 	inc hl;
 	inc de;
-	ld b, 0;
 	ldir;
-	pop bc;
 	ex (sp), hl;
 	exx;
 	pop hl;
@@ -233,22 +233,6 @@ stk_zeros:
 	ld (de), a;
 	inc de;
 	jr stk_zeros;
-
-;	// THE 'SKIP CONSTANTS' SUBROUTINE
-
-skip_cons:
-	and a;
-
-skip_next:
-	ret z;
-	push af;
-	push de;
-	ld de, $0000;
-	call stk_const;
-	pop de;
-	pop af;
-	dec a;
-	jr skip_next;
 
 ;	// THE 'MEMORY LOCATION' SUBROUTINE
 
@@ -265,8 +249,10 @@ loc_mem:
 ;	// THE 'GET FROM MEMORY AREA' SUBROUTINE
 
 fp_get_mem_xx:
-	push de;
 	ld hl, (mem);
+
+fp_get_mem_xx_2:
+	push de;
 	call loc_mem;
 	call fp_move_fp;
 	pop hl;
@@ -275,18 +261,8 @@ fp_get_mem_xx:
 ;	// THE 'STACK A CONSTANT' SUBROUTINE
 
 fp_stk_con_xx:
-	ld h, d;
-	ld l, e;
-	exx;
-	push hl;
 	ld hl, table_con;
-	exx;
-	call skip_cons;
-	call stk_const;
-	exx;
-	pop hl;
-	exx;
-	ret;
+	jr fp_get_mem_xx_2;
 
 ;	// THE 'STORE IN MEMORY AREA' SUBROUTINE
 
@@ -296,7 +272,8 @@ fp_st_mem_xx:
 	ld hl, (mem);
 	call loc_mem;
 	ex de, hl;
-	call fp_move_fp;
+	ld c, 5;
+	ldir;
 	ex de, hl;
 	pop hl;
 	ret;
@@ -308,14 +285,13 @@ fp_exchange:
 
 swap_byte:
 	ld a, (de);
-	ld c, (hl);
-	ex de, hl;
+	ld c, a;
+	ld a, (hl);
 	ld (de), a;
 	ld (hl), c;
 	inc hl;
 	inc de;
 	djnz swap_byte;
-	ex de, hl;
 	ret;
 
 ;	// THE 'SERIES GENERATOR ' SUBROUTINE 
@@ -479,7 +455,6 @@ fp_str_and_no:
 
 fp_comparison:
 	ld a, b;
-	sub 8;
 	bit 2, a;
 	jr nz, ex_or_not;
 	dec a;
@@ -495,16 +470,14 @@ ex_or_not:
 	pop af;
 
 nu_or_str:
-	bit 2, a;
-	jr nz, strings;
 	rrca;
 	push af;
+	bit 2, a;
+	jr nz, strings;
 	call fp_subtract;
 	jr end_tests;
 
 strings:
-	rrca;
-	push af;
 	call stk_fetch;
 	push de;
 	push bc;
@@ -583,18 +556,12 @@ fp_strs_add:
 	call stk_store;
 	pop bc;
 	pop hl;
-	ld a, b;
-	or c;
-	jr z, other_str;
-	ldir;
+	call l_enter_1;
 
 other_str:
 	pop bc;
 	pop hl;
-	ld a, b;
-	or c;
-	jr z, stk_pntrs;
-	ldir;
+	call l_enter_1;
 
 ;	// THE 'STK_PNTRS' SUBROUTINE
 
@@ -612,23 +579,19 @@ fp_chrS:
 	call fp_to_a;
 	jr c, report_b2;
 	jr nz, report_b2;
-	push af;
-	ld bc, $0001;
+	ld bc, 1;
 	rst bc_spaces;
-	pop af;
 	ld (de), a;
-	call stk_store;
-	ex de, hl;
-	ret;
+	jr fp_strS_1;
 
 report_b2:
-	rst error_1 ;
+	rst error_1;
 	defb integer_out_of_range;
 
 ;	// THE 'VAL' FUNCTION
 
 fp_val:
-	ld hl, (ch_add);
+	rst get_ch;
 	push hl;
 	call stk_fetch;
 	push de;
@@ -677,6 +640,8 @@ fp_strS:
 	ld (df_cc), hl;
 	pop hl;
 	ld (s_posn), hl;
+
+fp_strS_1:
 	call stk_store;
 	ex de, hl;
 	ret;
@@ -719,12 +684,9 @@ fp_jump:
 
 jump_2:
 	ld e, (hl);
-	xor a;
-	bit 7, e;
-	jr z, new_addr;
-	cpl;
-
-new_addr:
+	ld a, e;
+	rla;
+	sbc a, a;
 	ld d, a;
 	add hl, de;
 	exx;
@@ -854,8 +816,6 @@ report_a:
 	defb invalid_argument;
 
 valid:
-	defb stk_zero;
-	defb delete;
 	defb end_calc;
 	ld a, (hl);
 	ld (hl), $80;
@@ -1086,13 +1046,82 @@ fp_acs:
 
 ;	// THE 'SQUARE ROOT' FUNCTION
 
+;	// LARGE SQR ROOT
+
 fp_sqr:
 	rst fp_calc;
-	defb duplicate;
-	defb fn_not;
-	defb jump_true, last -$ - 1;
-	defb stk_half;
+	defb st_mem_3;
 	defb end_calc;
+	ld a, (hl);
+	and a;
+	ret z;
+	inc hl;
+	bit 7, (hl);
+	jp nz, report_a;
+	ld hl, $4071
+	ld a, (hl)
+	xor $80;
+	sra a;
+	inc a;
+	jr z, asis;
+	jp p, asis;
+	dec a;
+
+asis:
+	xor $80;
+	ld (hl), a;
+	rst fp_calc;
+
+sloop:;
+	defb duplicate;
+	defb get_mem_3;
+	defb st_mem_4;
+	defb division;
+	defb get_mem_3;
+	defb addition;
+	defb stk_half;
+	defb multiply;
+	defb st_mem_3;
+	defb get_mem_4;
+	defb subtract;
+	defb abs;
+	defb greater_0;
+	defb jump_true, sloop - $ - 1;
+	defb delete;
+	defb get_mem_3;
+	defb end_calc;
+	ret;
+
+;	// the following code is buggy and currently produces SQR 9 = 0
+
+;fp_sqr:
+;	rst fp_calc;						// x
+;	defb stk_zero;						// store in mem-0
+;	defb end_calc;						// exit calculator
+;	ld a, (hl);							// value to A
+;	and a;								// test against zero
+;	ret z;								// return if so
+;	add a, 128;							// set carry if greater or equal to 128
+;	rra;								// divide by two
+;	ld (hl), a;							// replace value
+;	inc hl;								// next location
+;	ld a, (hl);							// get sign bit
+;	rla;								// rotate left
+;	jp c, report_a;						// error with negative number
+;	ld (hl), 127;						// mantissa starts at about one
+;	ld b, 5;							// set counter
+;
+;fp_sqr_1:
+;	rst fp_calc;						// x
+;	defb duplicate;						// x, x
+;	defb get_mem_0;						// x, x, n
+;	defb exchange;						// x, n, x
+;	defb division;						// x, n / x
+;	defb addition;						// x + n / x
+;	defb end_calc;						// exit calculator
+;	dec (hl);							// halve value
+;	djnz fp_sqr_1;						// loop until found
+;	ret;								// end of subroutine
 
 ;	// THE 'EXPONENTIATION' OPERATION
 
@@ -1116,9 +1145,12 @@ xis0:
 	defb exchange;
 	defb greater_0;
 	defb jump_true, last - $ - 1;
-	defb stk_one;
-	defb exchange;
-	defb division;
+;	defb stk_one;
+;	defb exchange;
+;	defb division;
+	defb end_calc;
+	rst error_1;
+	defb arithmetic_overflow;
 
 one:
 	defb delete;
