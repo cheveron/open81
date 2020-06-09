@@ -1046,82 +1046,34 @@ fp_acs:
 
 ;	// THE 'SQUARE ROOT' FUNCTION
 
-;	// LARGE SQR ROOT
-
 fp_sqr:
-	rst fp_calc;
-	defb st_mem_3;
-	defb end_calc;
-	ld a, (hl);
-	and a;
-	ret z;
-	inc hl;
-	bit 7, (hl);
-	jp nz, report_a;
-	ld hl, $4071
-	ld a, (hl)
-	xor $80;
-	sra a;
-	inc a;
-	jr z, asis;
-	jp p, asis;
-	dec a;
+	rst fp_calc;						// x
+	defb st_mem_0;						// store in mem-0
+	defb end_calc;						// exit calculator
+	ld a, (hl);							// value to A
+	and a;								// test against zero
+	ret z;								// return if so
+	add a, 128;							// set carry if greater or equal to 128
+	rra;								// divide by two
+	ld (hl), a;							// replace value
+	inc hl;								// next location
+	ld a, (hl);							// get sign bit
+	rla;								// rotate left
+	jp c, report_a;						// error with negative number
+	ld (hl), 127;						// mantissa starts at about one
+	ld b, 5;							// set counter
 
-asis:
-	xor $80;
-	ld (hl), a;
-	rst fp_calc;
-
-sloop:;
-	defb duplicate;
-	defb get_mem_3;
-	defb st_mem_4;
-	defb division;
-	defb get_mem_3;
-	defb addition;
-	defb stk_half;
-	defb multiply;
-	defb st_mem_3;
-	defb get_mem_4;
-	defb subtract;
-	defb abs;
-	defb greater_0;
-	defb jump_true, sloop - $ - 1;
-	defb delete;
-	defb get_mem_3;
-	defb end_calc;
-	ret;
-
-;	// the following code is buggy and currently produces SQR 9 = 0
-
-;fp_sqr:
-;	rst fp_calc;						// x
-;	defb stk_zero;						// store in mem-0
-;	defb end_calc;						// exit calculator
-;	ld a, (hl);							// value to A
-;	and a;								// test against zero
-;	ret z;								// return if so
-;	add a, 128;							// set carry if greater or equal to 128
-;	rra;								// divide by two
-;	ld (hl), a;							// replace value
-;	inc hl;								// next location
-;	ld a, (hl);							// get sign bit
-;	rla;								// rotate left
-;	jp c, report_a;						// error with negative number
-;	ld (hl), 127;						// mantissa starts at about one
-;	ld b, 5;							// set counter
-;
-;fp_sqr_1:
-;	rst fp_calc;						// x
-;	defb duplicate;						// x, x
-;	defb get_mem_0;						// x, x, n
-;	defb exchange;						// x, n, x
-;	defb division;						// x, n / x
-;	defb addition;						// x + n / x
-;	defb end_calc;						// exit calculator
-;	dec (hl);							// halve value
-;	djnz fp_sqr_1;						// loop until found
-;	ret;								// end of subroutine
+fp_sqr_1:
+	rst fp_calc;						// x
+	defb duplicate;						// x, x
+	defb get_mem_0;						// x, x, n
+	defb exchange;						// x, n, x
+	defb division;						// x, n / x
+	defb addition;						// x + n / x
+	defb end_calc;						// exit calculator
+	dec (hl);							// halve value
+	djnz fp_sqr_1;						// loop until found
+	ret;								// end of subroutine
 
 ;	// THE 'EXPONENTIATION' OPERATION
 
