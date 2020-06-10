@@ -58,8 +58,8 @@ stk_digit:
 ;	// THE 'STACK-A' SUBROUTINE
 
 stack_a:
-	ld c, a;
-	ld b, 0;
+	ld c, a;							// value to
+	ld b, 0;							// BC
 
 ;	// THE 'STACK_BC' SUBROUTINE
 
@@ -234,19 +234,19 @@ fbc_end:
 ;	// THE 'FLOATING-POINT TO A' SUBROUTINE
 
 fp_to_a:
-	call fp_to_bc;
-	ret c;
-	push af;
-	dec b;
-	inc b;
-	jr z, fp_a_end;
-	pop af;
-	scf;
-	ret;
+	call fp_to_bc;						// last value on calc stack to BC
+	ret c;								// return if out of range
+	push af;							// stack result and flags
+	dec b;								// is B
+	inc b;								// zero?
+	jr z, fp_a_end;						// jump if not
+	pop af;								// unstack result and flags
+	scf;								// signal out of range
+	ret;								// end of subroutine
 
 fp_a_end:
-	pop af;
-	ret;
+	pop af;								// unstack result and flags
+	ret;								// end of subroutine
 
 ;	// THE 'PRINT A FLOATING-POINT NUMBER' SUBROUTINE
 
@@ -466,123 +466,123 @@ out_next:
 ;	// THE 'PREPARE TO ADD' SUBROUTINE
 
 prep_add:
-	ld a, (hl);
-	ld (hl), 0;
-	and a;
-	ret z;
-	inc hl;
-	bit 7, (hl);
-	set 7, (hl);
-	dec hl;
-	ret z;
-	push bc;
-	ld bc, $0005;
-	add hl, bc;
-	ld b, c;
-	ld c, a;
-	scf;
+	ld a, (hl);							// exponent to A
+	and a;								// zero?
+	ret z;								// return if so
+	ld (hl), 0;							// make zero for positive
+	inc hl;								// address sign byte
+	bit 7, (hl);						// set zero flag for positive
+	set 7, (hl);						// restore true numeric bit
+	dec hl;								// step back
+	ret z;								// return with positive
+	push bc;							// stack exponent
+	ld bc, 5;							// five bytes
+	add hl, bc;							// address byte after last byte
+	ld b, c;							// count to B
+	ld c, a;							// exponent to C
+	scf;								// set carry flag for negative
 
 neg_byte:
-	dec hl;
-	ld a, (hl);
-	cpl;
-	adc a, 0;
-	ld (hl), a;
-	djnz neg_byte;
-	ld a, c;
-	pop bc;
-	ret;
+	dec hl;								// each byte in turn
+	ld a, (hl);							// get it
+	cpl;								// complement carry flag
+	adc a, 0;							// add in carry for negation
+	ld (hl), a;							// store it
+	djnz neg_byte;						// loop until done
+	ld a, c;							// exponent to A
+	pop bc;								// unstack exponent
+	ret;								// end of subroutine
 
 ;	// THE 'FETCH TWO NUMBERS' SUBROUTINE
 
 fetch_two:
-	push hl;
-	push af;
-	ld c, (hl);
-	inc hl;
-	ld b, (hl);
-	ld (hl), a;
-	inc hl;
-	ld a, c;
-	ld c, (hl);
-	push bc;
-	inc hl;
-	ld c, (hl);
-	inc hl;
-	ld b, (hl);
-	ex de, hl;
-	ld d, a;
-	ld e, (hl);
-	push de;
-	inc hl;
-	ld d, (hl);
-	inc hl;
-	ld e, (hl);
-	push de;
-	exx;
-	pop de;
-	pop hl;
-	pop bc;
-	exx;
-	inc hl;
-	ld d, (hl);
-	inc hl;
-	ld e, (hl);
-	pop af;
-	pop hl;
-	ret;
+	push hl;							// stack HL
+	push af;							// and AF
+	ld c, (hl);							// m1 to C
+	inc hl;								// next
+	ld b, (hl);							// m2 to B
+	ld (hl), a;							// sign tp HL
+	inc hl;								// next
+	ld a, c;							// m1 to A
+	ld c, (hl);							// m3 to C
+	push bc;							// stack m2 and m3
+	inc hl;								// next
+	ld c, (hl);							// m4 to C
+	inc hl;								// next
+	ld b, (hl);							// m5 to B
+	ex de, hl;							// HL points to n1
+	ld d, a;							// m1 to D
+	ld e, (hl);							// n1 to E
+	push de;							// stacl m1 and n1
+	inc hl;								// next
+	ld d, (hl);							// n2 to D
+	inc hl;								// next
+	ld e, (hl);							// n3 to E
+	push de;							// stack n2 and n3
+	exx;								// alternate register set
+	pop de;								// n2 and n3 to DE'
+	pop hl;								// m1 and n1 to HL'
+	pop bc;								// m2 and m3 to BC'
+	exx;								// main register set
+	inc hl;								// next
+	ld d, (hl);							// n4 to D
+	inc hl;								// next
+	ld e, (hl);							// n5 to E
+	pop af;								// unstack AF
+	pop hl;								// and HL
+	ret;								// end of subroutine
 
 ;	// THE 'SHIFT ADDEND' SUBROUTINE
 
 shift_fp:
-	and a;
-	ret z;
-	cp 33;
-	jr nc, addend_0;
-	push bc;
-	ld b, a;
+	and a;								// no exponent difference?
+	ret z;								// return if so
+	cp 33;								// greater than 32?
+	jr nc, addend_0;					// jump if so
+	push bc;							// stack BC
+	ld b, a;							// exponent difference to B
 
 one_shift:
-	exx;
-	sra l;
-	rr d;
-	rr e;
-	exx;
-	rr d;
-	rr e;
-	djnz one_shift;
-	pop bc;
-	ret nc;
-	call add_back;
-	ret nz;
+	exx;								// alternate register set
+	sra l;								// shift right arithmetic L'
+	rr d;								// rotate right
+	rr e;								// with carry DE'
+	exx;								// main register set
+	rr d;								// rotate right
+	rr e;								// with carry DE
+	djnz one_shift;						// shift all five bytes right until done
+	pop bc;								// unstack BC
+	ret nc;								// return if no carry
+	call add_back;						// get carry
+	ret nz;								// return if nothing to add
 
 addend_0:
-	exx;
-	xor a;
+	exx;								// alternate register set
+	xor a;								// LD A, 0
 
 zeros_4_5:
-	ld l, 0;
-	ld d, a;
-	ld e, l;
-	exx;
-	ld de, $0000;
-	ret;
+	ld l, 0;							// clear L'
+	ld d, a;							// clear
+	ld e, l;							// DE'
+	exx;								// main register set
+	ld de, 0;							// clear DE
+	ret;								// end of subroutine
 
 ;	// THE 'ADD_BACK' SUBROUTINE
 
 add_back:
-	inc e;
-	ret nz;
-	inc d;
-	ret nz;
-	exx;
-	inc e;
-	jr nz, all_added;
-	inc d;
+	inc e;								// add carry to rightmost byte
+	ret nz;								// return if no overflow
+	inc d;								// next
+	ret nz;								// return if no overflow
+	exx;								// alternate register set
+	inc e;								// next
+	jr nz, all_added;					// jump if no overflow
+	inc d;								// next
 
 all_added:
-	exx;
-	ret;
+	exx;								// main register set
+	ret;								// end of subroutine
 
 ;	// THE 'SUBTRACTION' OPERATION
 
@@ -599,94 +599,94 @@ fp_subtract:
 ;	// THE 'ADDITION' OPERATION
 
 fp_addition:
-	exx;
-	push hl;
-	exx;
-	push de;
-	push hl;
-	call prep_add;
-	ld b, a;
-	ex de, hl;
-	call prep_add;
-	ld c, a;
-	cp b;
-	jr nc, shift_len;
-	ld a, b;
-	ld b, c;
-	ex de, hl;
+	exx;								// alternate register set
+	push hl;							// stack next literal address
+	exx;								// main register set
+	push de;							// stack pointer to addend
+	push hl;							// and pointer to augend
+	call prep_add;						// prepare augend
+	ld b, a;							// exponent to B
+	ex de, hl;							// swap pointers
+	call prep_add;						// prepare addend
+	ld c, a;							// exponent to C
+	cp b;								// first exponent smaller?
+	jr nc, shift_len;					// jump if so
+	ld a, b;							// swap
+	ld b, c;							// exponents
+	ex de, hl;							// swap pointers
 
 shift_len:
-	push af;
-	sub b;
-	call fetch_two;
-	call shift_fp;
-	pop af;
-	pop hl;
-	ld (hl), a;
-	push hl;
-	ld l, b;
-	ld h, c;
-	add hl, de;
-	exx;
-	ex de, hl;
-	adc hl, bc;
-	ex de, hl;
-	ld a, h;
-	adc a, l;
-	ld l, a;
-	rra ;
-	xor l;
-	exx;
-	ex de, hl;
-	pop hl;
-	rra ;
-	jr nc, test_neg;
-	ld a, 1;
-	call shift_fp;
-	inc (hl);
-	jr z, add_rep_6;
+	push af;							// stack larger exponent
+	sub b;								// get difference in B
+	call fetch_two;						// get two numbers from calculator stack
+	call shift_fp;						// shift addend right
+	pop af;								// unstack larger exponent
+	pop hl;								// unstack pointer to result
+	ld (hl), a;							// store exponent
+	push hl;							// stack pointer to result
+	ld l, b;							// m4 and m5
+	ld h, c;							// to HL
+	add hl, de;							// add two right bytes
+	exx;								// alternate register set
+	ex de, hl;							// n2 and n3 to HL'
+	adc hl, bc;							// add left bytes with carry
+	ex de, hl;							// result to DE'
+	ld a, h;							// add H'
+	adc a, l;							// add L'
+	ld l, a;							// result to L'
+	rra;								// test for
+	xor l;								// left overflow
+	exx;								// main register set
+	ex de, hl;							// result in DE and DE'
+	pop hl;								// unstack pointer to exponent
+	rra;								// test for shift
+	jr nc, test_neg;					// jump if no carry
+	ld a, 1;							// single right shift
+	call shift_fp;						// do it
+	inc (hl);							// exponent plus one
+	jr z, add_rep_6;					// jump with overflow
 
 test_neg:
-	exx;
-	ld a, l;
-	and %10000000;
-	exx;
-	inc hl;
-	ld (hl), a;
-	dec hl;
-	jr z, go_nc_mlt;
-	ld a, e;
-	neg;
-	ccf;
-	ld e, a;
-	ld a, d;
-	cpl ;
-	adc a, 0;
-	ld d, a;
-	exx;
-	ld a, e;
-	cpl ;
-	adc a, 0;
-	ld e, a;
-	ld a, d;
-	cpl ;
-	adc a, 0;
-	jr nc, end_compl;
-	rra ;
-	exx;
-	inc (hl);
+	exx;								// swap register set
+	ld a, l;							// sign bit to A
+	and %10000000;						// set sign
+	exx;								// alternate register set
+	inc hl;								// point to second byte
+	ld (hl), a;							// store sign
+	dec hl;								// point to first byte
+	jr z, go_nc_mlt;					// ump with zero else twos complement
+	ld a, e;							// first byte to A
+	neg;								// negate it
+	ccf;								// complement carry flag
+	ld e, a;							// store in E
+	ld a, d;							// next byte to A
+	cpl;								// ones complement
+	adc a, 0;							// add carry
+	ld d, a;							// store in D
+	exx;								// swap register set
+	ld a, e;							// next byte to A
+	cpl;								// ones complement
+	adc a, 0;							// add carry
+	ld e, a;							// store in E
+	ld a, d;							// next byte
+	cpl;								// ones complement
+	adc a, 0;							// add carry
+	jr nc, end_compl;					// jump if no carry
+	rra;								// lse 0.5 to mantissa, e = e + 1
+	exx;								// alternate register set
+	inc (hl);							// increase (HL)
 
 add_rep_6:
-	jp z, report_6;
-	exx;
+	jp z, report_6;						// jump if overflow
+	exx;								// swap register set
 	
 end_compl:
-	ld d, a;
-	exx;
+	ld d, a;							// last byte to D
+	exx;								// swap register set
 
 go_nc_mlt:
-	xor a;
-	jr test_norm;
+	xor a;								// LD A, 0
+	jp test_norm;						// immediate jump
 
 ;	// THE 'PREPARE TO MULTIPLY OR DIVIDE' SUBROUTINE
 
@@ -704,169 +704,169 @@ prep_m_d:
 ;	// THE 'MULTIPLICATION' OPERATION
 
 fp_multiply:
-	xor a;
-	call prep_m_d;
-	ret c;
-	exx;
-	push hl;
-	exx;
-	push de;
-	ex de, hl;
-	call prep_m_d;
-	ex de, hl;
-	jr c, zero_rslt;
-	push hl;
-	call fetch_two;
-	ld a, b;
-	and a;
-	sbc hl, hl;
-	exx;
-	push hl;
-	sbc hl, hl;
-	exx;
-	ld b, 33;
-	jr strt_mlt;
+	xor a;								// LD A, 0
+	call prep_m_d;						// prepare first number for multiplication
+	ret c;								// return if zero
+	exx;								// alternate register set
+	push hl;							// stack next literal address
+	exx;								// main register set
+	push de;							// stack pointer to number to be multiplied
+	ex de, hl;							// swap pointers
+	call prep_m_d;						// prepare second number for multiplication
+	ex de, hl;							// swap pointers
+	jr c, zero_rslt;					// jump if second number is zero
+	push hl;							// stack pointer to result
+	call fetch_two;						// get two numbers from calculator stack
+	ld a, b;							// m5 to A
+	and a;								// prepare for subtraction
+	sbc hl, hl;							// LD HL, 0
+	exx;								// alternate register set
+	push hl;							// stack m1 and n1
+	sbc hl, hl;							// LD HL', 0
+	exx;								// main register set
+	ld b, 33;							// shift count
+	jr strt_mlt;						// immediate jump
 
 mlt_loop:
-	jr nc, no_add;
-	add hl, de;
-	exx;
-	adc hl, de;
-	exx;
+	jr nc, no_add;						// jump if no carry
+	add hl, de;							// add number in DE to result
+	exx;								// alternate register set
+	adc hl, de;							// add number in DE' to result
+	exx;								// main register set
 
 no_add:
-	exx;
-	rr h;
-	rr l;
-	exx;
-	rr h;
-	rr l;
+	exx;								// alternate register set
+	rr h;								// shift HL'
+	rr l;								// right
+	exx;								// main register set
+	rr h;								// shift HL
+	rr l;								// right
 
 strt_mlt:
-	exx;
-	rr b;
-	rr c;
-	exx;
-	rr c;
-	rra;
-	djnz mlt_loop;
-	ex de, hl;
-	exx;
-	ex de, hl;
-	exx;
-	pop bc;
-	pop hl;
-	ld a, b;
-	add a, c;
-	jr nz, make_expt;
-	and a;
+	exx;								// alternate register set
+	rr b;								// shift BC'
+	rr c;								// right
+	exx;								// main register set
+	rr c;								// shift C right
+	rra;								// shift A right with carry
+	djnz mlt_loop;						// loop until done
+	ex de, hl;							// HL to DE
+	exx;								// alternate register set
+	ex de, hl;							// HL' to DE'
+	exx;								// main register set
+	pop bc;								// unstack exponents
+	pop hl;								// unstack pointer to exponent byte
+	ld a, b;							// sum of exponents
+	add a, c;							// to A
+	jr nz, make_expt;					// jump if not zero
+	and a;								// else clear carry flag
 
 make_expt:
-	dec a;
-	ccf;
+	dec a;								// prepare to increase
+	ccf;								// exponent by 128
 
 divn_expt:
-	rla ;
-	ccf;
-	rra ;
-	jp p, oflw1_clr;
-	jr nc, report_6;
-	and a;
+	rla;								// rotate left with carry
+	ccf;								// complement carry flag
+	rra;								// rotate right with carry
+	jp p, oflw1_clr;					// jump if sign flag cleared
+	jr nc, report_6;					// jump if overflow
+	and a;								// clear carry flag
 
 oflw1_clr:
-	inc a;
-	jr nz, oflw2_clr;
-	jr c, oflw2_clr;
-	exx;
-	bit 7, d;
-	exx;
-	jr nz, report_6;
+	inc a;								// increase A
+	jr nz, oflw2_clr;					// jump if not zero
+	jr c, oflw2_clr;					// jump if carry set
+	exx;								// alternate register set
+	bit 7, d;							// test bit 7 of D'
+	exx;								// main register set
+	jr nz, report_6;					// jump if overflow
 
 oflw2_clr:
-	ld (hl), a;
-	exx;
-	ld a, b;
-	exx;
+	ld (hl), a;							// set exponent byte
+	exx;								// alternate register set
+	ld a, b;							// LD A, B'
+	exx;								// main register set
 
 test_norm:
-	jr nc, normalize;
-	ld a, (hl);
-	and a;
+	jr nc, normalize;					// jump if no carry
+	ld a, (hl);							// result to A
+	and a;								// test for zero
 
 near_zero:
-	ld a, 128;
-	jr z, skip_zero;
+	ld a, 128;							// or near zero
+	jr z, skip_zero;					// jump with zero
 
 zero_rslt:
-	xor a;
+	xor a;								// LD A, 0
 
 skip_zero:
-	exx;
-	and d;
-	call zeros_4_5;
-	rlca;
-	ld (hl), a;
-	jr c, oflow_clr;
-	inc hl;
-	ld (hl), a;
-	dec hl;
-	jr oflow_clr;
+	exx;								// alternate register set
+	and d;								// 2** - 128 if normal, else zero
+	call zeros_4_5;						// set exponent to one
+	rlca;								// unless zero
+	ld (hl), a;							// restore exponent byte
+	jr c, oflow_clr;					// jump if 2** - 128
+	inc hl;								// second byte of result
+	ld (hl), a;							// store zero
+	dec hl;								// first byte of result
+	jr oflow_clr;						// immediate jump
 
 normalize:
-	ld b, 32;
+	ld b, 32;							// left shift count
 
 shift_one:
-	exx;
-	bit 7, d;
-	exx;
-	jr nz, norml_now;
-	rlca;
-	rl e;
-	rl d;
-	exx;
-	rl e;
-	rl d;
-	exx;
-	dec (hl);
-	jr z, near_zero;
-	djnz shift_one;
-	jr zero_rslt;
+	exx;								// alternate register set
+	bit 7, d;							// test bit 7 of D'
+	exx;								// main register set
+	jr nz, norml_now;					// jump if already normalized
+	rlca;								// fifth byte to A
+	rl e;								// rotate DE
+	rl d;								// left
+	exx;								// alternate register set
+	rl e;								// rotate DE'
+	rl d;								// left
+	exx;								// main register set
+	dec (hl);							// reduce exponent
+	jr z, near_zero;					// jump if zero
+	djnz shift_one;						// loop until done
+	jr zero_rslt;						// immediate jump
 
 norml_now:
-	rla ;
-	jr nc, oflow_clr;
-	call add_back;
-	jr nz, oflow_clr;
-	exx;
-	ld d, 128;
-	exx;
-	inc (hl);
-	jr z, report_6;
+	rla;								// rotate A left
+	jr nc, oflow_clr;					// jump if no carry
+	call add_back;						// else add back
+	jr nz, oflow_clr;					// jump if no overflow
+	exx;								// alternate register set
+	ld d, 128;							// mantissa to 0.5
+	exx;								// main register set
+	inc (hl);							// increase result
+	jr z, report_6;						// jump with overflow
 
 oflow_clr:
-	push hl;
-	inc hl;
-	exx;
-	push de;
-	exx;
-	pop bc;
-	ld a, b;
-	rla;
-	rl (hl);
-	rra;
-	ld (hl), a;
-	inc hl;
-	ld (hl), c;
-	inc hl;
-	ld (hl), d;
-	inc hl;
-	ld (hl), e;
-	pop hl;
-	pop de;
-	exx;
-	pop hl;
-	exx;
-	ret;
+	push hl;							// stack pointer
+	inc hl;								// point to sign byte
+	exx;								// alternate register set
+	push de;							// stack DE'
+	exx;								// main register set
+	pop bc;								// DE' to BC
+	ld a, b;							// sign to A
+	rla;								// store sign
+	rl (hl);							// in bit 7
+	rra;								// of
+	ld (hl), a;							// store first byte
+	inc hl;								// next
+	ld (hl), c;							// store second byte
+	inc hl;								// next
+	ld (hl), d;							// store third byte
+	inc hl;								// next
+	ld (hl), e;							// store fourth byte
+	pop hl;								// unstack pointer to result
+	pop de;								// unstack pointer to second number
+	exx;								// alternate register set
+	pop hl;								// next literal address to HL'
+	exx;								// main register set
+	ret;								// end of subroutine
 
 report_6:
 	rst error_1 ;
@@ -875,130 +875,133 @@ report_6:
 ;	// THE 'DIVISION' OPERATION
 
 fp_division:
-	ex de, hl;
-	xor a;
-	call prep_m_d;
-	jr c, report_6;
-	ex de, hl;
-	call prep_m_d;
-	ret c;
-	exx;
-	push hl;
-	exx;
-	push de;
-	push hl;
-	call fetch_two;
-	exx;
-	push hl;
-	ld h, b;
-	ld l, c;
-	exx;
-	ld h, c;
-	ld l, b;
-	xor a;
-	ld b, $df;
-	jr div_start;
+	ex de, hl;							// swap pointers
+	xor a;								// LD A, 0
+	call prep_m_d;						// prepare number to divide by
+	jr c, report_6;						// error if divide by zero
+	ex de, hl;							// swap pointers
+	call prep_m_d;						// prepare number to be divided
+	ret c;								// return if already zero
+	exx;								// alternate register set
+	push hl;							// stack next literal address
+	exx;								// main register set
+	push de;							// stack pointer to number to divide by
+	push hl;							// stack pointer to number to be divided
+	call fetch_two;						// get two numbers from calculator stack
+	exx;								// alternate register set
+	push hl;							// stack m1 and n1
+	ld l, c;							// to BC'
+	ld h, b;							// number to be divided
+	exx;								// main register set
+	ld l, b;							// and
+	ld h, c;							// BC
+	xor a;								// LD A, 0
+	ld b, $df;							// set count
+	jr div_start;						// immediate jump
 
 div_loop:
-	rla ;
-	rl c;
-	exx;
-	rl c;
-	rl b;
-	exx;
-	add hl, hl;
-	exx;
-	adc hl, hl;
-	exx;
-	jr c, subn_only;
+	rla;								// perform 32-bit shift into BC'CA taking
+	rl c;								// one from carry, if set, at each shift
+	exx;								// alternate register set
+	rl c;								// rotate BC'
+	rl b;								// left
+	exx;								// main register set
+
+div_34th:
+	add hl, hl;							// move remains of dividend in HL'HL 
+	exx;								// alternate register set
+	adc hl, hl;							// and retrieve lost bit
+	exx;								// main register set
+	jr c, subn_only;					// jump if carry set
 
 div_start:
-	sbc hl, de;
-	exx;
-	sbc hl, de;
-	exx;
-	jr nc, no_rstore;
-	add hl, de;
-	exx;
-	adc hl, de;
-	exx;
-	and a;
-	jr count_one;
+	sbc hl, de;							// subtract divisor from dividend
+	exx;								// alternate register set
+	sbc hl, de;							// (32-bit arithmetic
+	exx;								// main register set
+	jr nc, no_rstore;					// jump if no carry
+	add hl, de;							// restore HL
+	exx;								// alternate register set
+	adc hl, de;							// restore HL'
+	exx;								// main register set
+	and a;								// clear carry flag
+	jr count_one;						// immediate jump
 
 subn_only:
-	and a;
-	sbc hl, de;
-	exx;
-	sbc hl, de;
-	exx;
+	and a;								// prepare for subtraction
+	sbc hl, de;							// subtract divisor from dividend
+	exx;								// alternate register set
+	sbc hl, de;							// (32-bit arithmetic)
+	exx;								// main register set
 
 no_rstore:
-	scf;
+	scf;								// set carry flag
 
 count_one:
-	inc b;
-	jp m, div_loop;
-	push af;
-	jr z, div_start;
-	ld e, a;
-	ld d, c;
-	exx;
-	ld e, c;
-	ld d, b;
-	pop af;
-	rr b;
-	pop af;
-	rr b;
-	exx;
-	pop bc;
-	pop hl;
-	ld a, b;
-	sub c;
-	jp divn_expt;
+	inc b;								// increase count
+	jp m, div_loop;						// loop until done
+	push af;							// stack carry flag (33rd bit)
+	jr z, div_34th;						// trial subtract for 34th bit if required
+	ld e, a;							// transfer
+	ld d, c;							// mantissa of result ...
+	exx;								// alternate register set
+	ld e, c;							// ... from BC'CA
+	ld d, b;							// to DE'DE
+	pop af;								// 34th bit
+	rr b;								// to B'
+	pop af;								// 33rd bit
+	rr b;								// to B'
+	exx;								// main register set
+	pop bc;								// unstack exponent bytes
+	pop hl;								// unstack pointer to result
+	ld a, b;							// difference
+	sub c;								// to A
+	jp divn_expt;						// immediate jump
+
 
 ;	// THE 'INTEGER TRUNCATION TOWARDS ZERO' SUBROUTINE
 
 fp_truncate:
-	ld a, (hl);
-	cp 129;
-	jr nc, x_large;
-	ld (hl), 0;
-	ld a, 32;
-	jr nil_bytes;
+	ld a, (hl);							// exponent to A
+	cp 129;								// greater than 128?
+	jr nc, x_large;						// jump if so
+	ld (hl), 0;							// zero exponent
+	ld a, 32;							// count
+	jr nil_bytes;						// immediate jump
 
 x_large:
-	sub 160;
-	ret p;
-	neg;
+	sub 160;							// subtract 160 from exponent
+	ret p;								// return if positive
+	neg;								// else negate
 
 nil_bytes:
-	push de;
-	ex de, hl;
-	dec hl;
-	ld b, a;
-	srl b;
-	srl b;
-	srl b;
-	jr z, bits_zero;
+	push de;							// stack stack end
+	ex de, hl;							// HL points to byte after fifth byte
+	dec hl;								// point to fifth byte
+	ld b, a;							// number of bits to zero to B
+	srl b;								// divide by B
+	srl b;								// to get
+	srl b;								// byte count 
+	jr z, bits_zero;					// jump if zero
 
 byte_zero:
-	ld (hl), 0;
-	dec hl;
-	djnz byte_zero;
+	ld (hl), 0;							// zero byte
+	dec hl;								// next location
+	djnz byte_zero;						// loop until done
 
 bits_zero:
-	and %00000111;
-	jr z, ix_end;
-	ld b, a;
-	ld a, 255;
+	and %00000111;						// A mod 8 = number of bits to zero
+	jr z, ix_end;						// jump if zero
+	ld b, a;							// count to B
+	ld a, 255;							// set mask
 
 less_mask:
-	sla a;
-	djnz less_mask;
-	and (hl);
-	ld (hl), a;
+	sla a;								// shift left and insert zero in bit 0
+	djnz less_mask;						// loop until done
+	and (hl);							// discard unwanted bits
+	ld (hl), a;							// store value in (HL)
 
 ix_end:
-	ex de, hl;
-	pop de;
-	ret;
+	ex de, hl;							// swap pointers
+	pop de;								// stack end to DE
+	ret;								// end of subroutine
