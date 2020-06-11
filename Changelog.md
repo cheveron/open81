@@ -26,7 +26,7 @@
 * Shorter `fp_strs_add`.
 * Faster `skt_pntrs`.
 * Shorter `fp_chrS`.
-* Changed `fp_n_mod_m` to use mem-1 for consistency with SE Basic IV.
+* Changed `fp_n_mod_m` to use `mem-1` for consistency with SE Basic IV.
 * Shorter `valid`.
 * Faster `fp_sqr`.
 * Faster `xis0`.
