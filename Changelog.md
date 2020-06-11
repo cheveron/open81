@@ -33,4 +33,4 @@
 * 19 `spare` bytes.
 
 `13_font.asm`
-* Added org to `font`.
+* Added `org` to `font`.
