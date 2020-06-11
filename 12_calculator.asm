@@ -20,7 +20,7 @@
 ;	// by Dr. Ian Logan & Dr. Frank O'Hara
 
 
-	org $1915;						// addresses prior to this point are identical to version 2
+	org $1915;	// addresses prior to this point are identical to version 2
 
 ;	// THE 'CALCULATOR' TABLES
 
@@ -134,10 +134,7 @@ first_38:
 	cp 24;								// unary operation?
 	jr nc, double_a;					// jump if so
 	exx;								// main register set
-	ld bc, $fffb;
-	ld d, h;
-	ld e, l;
-	add hl, bc;
+	call stk_pntrs_2;					// get pointers to operands
 	exx;								// alternate register set
 
 double_a:
@@ -294,7 +291,7 @@ swap_byte:
 	djnz swap_byte;						// exchange five bytes
 	ret;								// end of subroutine
 
-;	// THE 'SERIES GENERATOR ' SUBROUTINE 
+;	// THE 'SERIES GENERATOR ' SUBROUTINE
 fp_series_xx:
 	ld b, a;							// parameter to B
 	call gen_ent_1;						// enter calc and set counter
@@ -365,14 +362,14 @@ fp_sgn:
 ;	// THE 'PEEK' FUNCTION
 
 fp_peek:
-	call find_int2;						// get address in BC
+	call find_int;						// get address in BC
 	ld a, (bc);							// get byte
 	jp stack_a;							// indirect exit
 
 ;	// THE'USR' FUNCTION
 
 fp_usr:
-	call find_int2;						// get address in BC
+	call find_int;						// get address in BC
 	ld hl, stack_bc;					// stack
 	push hl;							// routine address
 	push bc;							// stack address
@@ -391,7 +388,11 @@ fp_greater_0:
 
 fp_not:
 	ld a, (hl);
+
+fp_not1:
 	neg;
+
+fp_not2:
 	ccf;
 	jr fp_0_div_1;
 
@@ -567,11 +568,16 @@ other_str:
 
 stk_pntrs:
 	ld hl, (stkend);					// stack end to HL
-	ld de, $fffb;
-	push hl;
-	add hl, de;
-	pop de;
-	ret;
+
+stk_pntrs_2:
+	ld e, l	;							// DE points to second
+	ld d, h;							// operand
+	dec hl;								// make
+	dec hl;								// HL
+	dec hl;								// point
+	dec hl;								// to first
+	dec hl;								// operand
+	ret;								// end of subroutine
 
 ;	// THE 'CHR$' FUNCTION
 
@@ -620,8 +626,8 @@ fp_val:
 fp_strS:
 	ld bc, 1;							// make one space
 	rst bc_spaces;
-	ld (hl), ctrl_newline;
-	ld hl, (s_posn);
+	ld (hl), ctrl_newline;				// put newline
+	ld hl, (s_posn);					// get column/line
 	push hl;							// stack it
 	ld a, $ff;							// channel W
 	ld (s_posn), hl;
@@ -642,7 +648,7 @@ fp_strS:
 	ld (s_posn), hl;
 
 fp_strS_1:
-	call stk_sto_str;					// parameters to calculator stack
+	call stk_store;						// parameters to calculator stack
 	ex de, hl;							// reset pointers
 	ret;								// end of subroutine
 
@@ -672,6 +678,8 @@ fp_dec_jr_nz:
 	ld hl, breg;						// get breg (counter)
 	dec (hl);							// reduce it
 	pop hl;								// unstack literal pointer
+
+jmp_tru1:
 	jr nz, jump_2;						// jump if not zero
 	inc hl;								// next literal
 	exx;								// main register set
@@ -697,57 +705,78 @@ jump_2:
 fp_jump_true:
 	ld a, (de);							// copy to A
 	and a;								// zero?
-	jr nz, fp_jump;						// jump if not
 	exx;								// alternate register set
-	inc hl;								// skip jump length
-	exx;								// main register set
-	ret;								// end of subroutine
+	jr jmp_tru1;						// back to JUMP if true (1)
 
 ;	// THE 'MODULUS' SUBROUTINE
 
 fp_n_mod_m:
 	rst fp_calc;
-	defb st_mem_0;
+	defb st_mem_1;
 	defb delete;
 	defb duplicate;
-	defb get_mem_0;
+	defb get_mem_1;
 	defb division;
 	defb int;
-	defb get_mem_0;
+	defb get_mem_1;
 	defb exchange;
-	defb st_mem_0;
+	defb st_mem_1;
 	defb multiply;
 	defb subtract;
-	defb get_mem_0;
+	defb get_mem_1;
 	defb end_calc;
 	ret;
 
 ;	// THE 'INT' FUNCTION
 
 fp_int:
-	rst fp_calc;
-	defb duplicate;
-	defb less_0;
-	defb jump_true, x_neg - $ - 1;
-	defb truncate;
-	defb end_calc;
-	ret;
+	push hl;							// save pointer to X
+	call fp_move_fp;					// duplicate
+	ex de, hl;							// DE now points the duplication
+	pop hl;								// HL now points X again
+	call fp_truncate;					// truncation towards zero
+	push hl;							// save pointer to the truncated X
+	push de;							// save pointer to the duplication
+	call comp_num;						// copmpare truncated X to the duplication
+	pop de;								// DE now points end of the duplication
+	pop hl;								// HL now points X again
+	ret z;								// return if X was an integer or	
+	ret nc;								// return if X was positive or zero
 
-x_neg:
-	defb duplicate;
-	defb truncate;
-	defb st_mem_0;
-	defb subtract;
-	defb get_mem_0;
-	defb exchange;
-	defb fn_not;
-	defb jump_true, exit - $ - 1;
-	defb stk_one;
-	defb subtract;
+	push hl;							// save pointer to X
+	ld a, 1;							// stack ONE
+	call fp_stk_con_xx;					//
+	ex de, hl;							// DE now points ONE
+	pop hl;								// HL now points X again
+	jp fp_subtract;						// return w. X = X - 1
 
-exit:
-	defb end_calc;
-	ret;
+;	// THE 'EXPONENTIATION' OPERATION
+
+to_pwr_0:
+	ex de, hl;							// else switch pointers
+	inc hl;								//
+	bit 7, (hl);						// test if Y is negative
+	dec hl;								//
+	ld a, (hl);							// fetch Y.exp
+	ex de, hl;							// switch back pointers
+	jp z, fp_not1;						// jump if it is positive or zero to
+;										// replace X with 1 (Y = 0) or 0 (Y > 0)
+	rst error_1;
+	defb arithmetic_overflow;
+
+fp_to_power:;							// HL points to X, DE points to Y
+	ld a,(hl);							// fetch X.exp
+	and a;								// test zero
+	jr z,to_pwr_0;						// continue if X <> 0
+
+;	// X is non-zero. function 'ln' will catch a negative value of X
+	rst fp_calc;						// x, y
+	defb exchange;						// y, x
+	defb ln;							// y, LN x
+
+;	// Multiply the power by the logarithm of the argument
+	defb multiply;						// y * LN x
+	defb end_calc;						// exit calculator
 
 ;	// THE 'EXPONENTIAL' FUNCTION
 
@@ -1077,40 +1106,40 @@ fp_sqr_1:
 
 ;	// THE 'EXPONENTIATION' OPERATION
 
-fp_to_power:
-	rst fp_calc;
-	defb exchange;
-	defb duplicate;
-	defb fn_not;
-	defb jump_true, xis0 - $ - 1;
-	defb ln;
-	defb multiply;
-	defb end_calc;
-	jp fp_exp;
+;fp_to_power:
+;	rst fp_calc;
+;	defb exchange;
+;	defb duplicate;
+;	defb fn_not;
+;	defb jump_true, xis0 - $ - 1;
+;	defb ln;
+;	defb multiply;
+;	defb end_calc;
+;	jp fp_exp;
 
-xis0:
-	defb delete;
-	defb duplicate;
-	defb fn_not;
-	defb jump_true, one - $ - 1;
-	defb stk_zero;
-	defb exchange;
-	defb greater_0;
-	defb jump_true, last - $ - 1;
+;xis0:
+;	defb delete;
+;	defb duplicate;
+;	defb fn_not;
+;	defb jump_true, one - $ - 1;
+;	defb stk_zero;
+;	defb exchange;
+;	defb greater_0;
+;	defb jump_true, last - $ - 1;
 ;	defb stk_one;
 ;	defb exchange;
 ;	defb division;
-	defb end_calc;
-	rst error_1;
-	defb arithmetic_overflow;
-
-one:
-	defb delete;
-	defb stk_one;
-
-last:
-	defb end_calc;
-	ret;
+;	defb end_calc;
+;	rst error_1;
+;	defb arithmetic_overflow;
+;
+;one:
+;	defb delete;
+;	defb stk_one;
+;
+;last:
+;	defb end_calc;
+;	ret;
 
 spare:
-	defb $ff;
+	defb $81;

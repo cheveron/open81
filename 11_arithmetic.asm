@@ -117,7 +117,7 @@ nxt_dgt_2:
 	rst next_ch;
 	jr nxt_dgt_2;
 
-;	// THE 'E-FORMAT TO FLOATING-POINT' SUBROUTINE 
+;	// THE 'E-FORMAT TO FLOATING-POINT' SUBROUTINE
 fp_e_to_fp:
 	rst fp_calc;
 	defb duplicate;
