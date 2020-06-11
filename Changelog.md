@@ -1,19 +1,19 @@
 # Version 2.5
 
-## 01_restars.asm
+`01_restart.asm`
 * Added version number after `next_ch` restart.
 * Call to `calculate` now goes to a different address.
 
-## 10_expresion.asm 
+`10_expresion.asm`
 * Added `l_enter_1` entry point.
 * Fixed bug in `nxt_dgt_1`.
 
-## 11_arithmetic.asm
+`11_arithmetic.asm`
 * Added comments from SE Basic IV.
 * Fixed bug in `out_zeros`.
 * Fixed bug in `count_one`.
 
-## 12_calculator.asm
+`12_calculator.asm`
 * Added comments from SE Basic IV.
 * Now `table_cons` stored in full.
 * Added `stk_pntrs_2` entry point.
@@ -32,5 +32,5 @@
 * Faster `xis0`.
 * 19 `spare` bytes.
 
-## 13_font.asm
+`13_font.asm`
 * Added org to `font`.
