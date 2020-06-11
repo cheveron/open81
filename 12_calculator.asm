@@ -19,14 +19,16 @@
 ;	// The Complete Timex TS1000 / Sinclair ZX81 ROM disassembly
 ;	// by Dr. Ian Logan & Dr. Frank O'Hara
 
+	org $1915;	// addresses prior to this point are identical to version 2
+
 ;	// THE 'CALCULATOR' TABLES
 
 table_con:
-	defb $00, $b0, $00;				// 0
-	defb $31, $00;					// 1
-	defb $30, $00;					// 1/2
-	defb $f1, $49, $0f, $da, $a2;	// PI/2
-	defb $34, $20;					// 10
+	defb $00, $00, $00, $00, $00;	// 0
+	defb $81, $00, $00, $00, $00;	// 1
+	defb $80, $00, $00, $00, $00;	// 1/2
+	defb $81, $49, $0f, $da, $a2;	// PI/2
+	defb $84, $20, $00, $00, $00;	// 10
 
 table_adr:
 	defw fp_jump_true;
@@ -86,6 +88,8 @@ table_adr:
 	defw fp_truncate;
 	defw fp_calc_2;
 	defw fp_e_to_fp;
+
+tbl_offs equ $ - table_adr;
 	defw fp_series_xx;
 	defw fp_stk_con_xx;
 	defw fp_st_mem_xx;
@@ -94,234 +98,204 @@ table_adr:
 ;	// THE 'CALCULATOR ' SUBROUTINE
 
 calculate:
-	call stk_pntrs
+	call stk_pntrs;						// HL to last value on calculator stack
 
 gen_ent_1:
-	ld a, b;
-	ld (breg), a;
+	ld a, b;							// offset or parameter
+	ld (breg),a;						// to breg
 
 gen_ent_2:
-	exx;
-	ex (sp), hl;
-	exx;
+	exx;								// store subroutine
+	ex (sp), hl;						// return address
+	exx;								// in HL'
 
 re_entry:
-	ld (stkend), de;
-	exx;
-	ld a, (hl);
-	inc hl;
+	ld (stkend), de;					// set to stack end
+	exx;								// use alternate register set
+	ld a, (hl);							// get literal
+	inc hl;								// HL' points to next literal
 
 scan_ent:
-	push hl;
-	and a;
-	jp p, first_38;
-	ld d, a;
-	and %01100000;
-	rrca;
-	rrca;
-	rrca;
-	rrca;
-	add a, $72;
-	ld l, a;
-	ld a, d;
-	and %00011111;
-	jr ent_table;
+	push hl;							// stack it
+	and a;								// test A
+	jp p, first_38;						// jump with 0 to 56
+	ld d, a;							// literal to D
+	and %01100000;						// preserve bit 5 and 6
+	rrca;								// shift
+	rrca;								// right
+	rrca;								// into
+	rrca;								// bit 1 and 2
+	add a, tbl_offs;					// offsets
+	ld l, a;							// L holds doubled offset
+	ld a, d;							// get parameter
+	and %00011111;						// from bits 0 to 4
+	jr ent_table;						// address routine
 
 first_38:
-	cp 24;
-	jr nc, double_a;
-	exx;
-	ld bc, $fffb;
-	ld d, h;
-	ld e, l;
-	add hl, bc;
-	exx;
+	cp 24;								// unary operation?
+	jr nc, double_a;					// jump if so
+	exx;								// main register set
+	call stk_pntrs_2;					// get pointers to operands
+	exx;								// alternate register set
 
 double_a:
-	rlca;
-	ld l, a;
+	rlca;								// two bytes per entry
+	ld l, a;							// so double offset
 
 ent_table:
-	ld de, table_adr;
-	ld h, 0;
-	add hl, de;
-	ld e, (hl);
-	inc hl;
-	ld d, (hl);
-	ld hl, re_entry;
-	ex (sp), hl;
-	push de;
-	exx;
-	ld bc, (stkend_h);
+	ld de, table_adr;;					// base address
+	ld h, 0;							// offset now in HL
+	add hl, de;							// calculate address
+	ld e, (hl);							// get address
+	inc hl;								// of routine
+	ld d, (hl);							// in DE
+	ld hl, re_entry;					// stack re_entry
+	ex (sp), hl;						// address
+	push de;							// stack routine address
+	exx;								// main register set
+	ld bc, (stkend_h);					// breg to B
 
 ;	// THE 'DELETE' SUBROUTINE
 
 fp_delete:
-	ret;
+	ret;								// end of subroutineindirect jump to subroutine
 
 ;	// THE 'SINGLE OPERATION' SUBROUTINE
 
 fp_calc_2:
-	pop af;
-	ld a, (breg);
-	exx;
-	jr scan_ent;
+	pop af;								// drop re-entry address
+	ld a, (breg);						// offset to A
+	exx;								// alternate register set
+	jr scan_ent;						// immediate jump
 
 ;	// THE 'TEST 5_SPACES' SUBROUTINE
 
 test_5_sp:
-	push de;
-	push hl;
-	ld bc, $0005;
-	call test_room;
-	pop hl;
-	pop de;
-	ret;
+	push de;							// stack DE
+	push hl;							// stack HL
+	ld bc, 5;							// 5 bytes
+	call test_room;						// test for space
+	pop hl;								// unstack HL
+	pop de;								// unstack DE
+	ret;								// end of subroutine
 
 ;	// THE 'MOVE A FLOATING_POINT NUMBER' SUBROUTINE
 
 fp_move_fp:
-	call test_5_sp;
-	ldir;
-	ret;
+	call test_5_sp;						// test for space
+	ldir;								// copy five bytes
+	ret;								// end of subroutine
 
 ;	// THE 'STACK LITERALS' SUBROUTINE
 
 fp_stk_data:
-	ld h, d;
-	ld l, e;
+	ld h, d;							// DE
+	ld l, e;							// to HL
 
 stk_const:
-	call test_5_sp;
-	exx;
-	push hl;
-	exx;
-	ex (sp), hl;
-	push bc;
-	ld a, (hl);
-	and %11000000;
-	rlca;
-	rlca;
-	ld c, a;
-	inc c;
-	ld a, (hl);
-	and %00111111;
-	jr nz, form_exp;
-	inc hl;
-	ld a, (hl);
+	call test_5_sp;						// test for space
+	exx;								// alternate register set
+	push hl;							// stack pointer to next literal
+	exx;								// main register set
+	ex (sp), hl;						// swap result and next literal pointers
+	ld a, (hl);							// first literal to A
+	and %11000000;						// divide by 64
+	rlca;								// to give values
+	rlca;								// 0 to 3
+	ld c, a;							// value to C
+	inc c;								// incremented (1 to 4)
+	ld a, (hl);							// get literal again
+	and %00111111;						// modulo 64
+	jr nz, form_exp;					// jump if remainder not zero
+	inc hl;								// else get next literal
+	ld a, (hl);							// and leave unreduced
 
 form_exp:
-	add a, 80;
-	ld (de), a;
-	ld a, 5;
-	sub c;
-	inc hl;
-	inc de;
-	ld b, 0;
-	ldir;
-	pop bc;
-	ex (sp), hl;
-	exx;
-	pop hl;
-	exx;
-	ld b, a;
-	xor a;
+	add a, 80;							// add 80 to get exponent
+	ld (de), a;							// put it on calculator stack
+	ld a, 5;							// get number
+	sub c;								// of literals
+	inc hl;								// next literal
+	inc de;								// next position in calculator stack
+	ldir;								// copy literals
+	ex (sp), hl;						// restore result and next literal pointers
+	exx;								// alternate register set
+	pop hl;								// unstack next literal to HL'
+	exx;								// main register set
+	ld b, a;							// zero bytes to B
+	xor a;								// LD A, 0
 
 stk_zeros:
-	dec b;
-	ret z;
-	ld (de), a;
-	inc de;
-	jr stk_zeros;
-
-;	// THE 'SKIP CONSTANTS' SUBROUTINE
-
-skip_cons:
-	and a;
-
-skip_next:
-	ret z;
-	push af;
-	push de;
-	ld de, $0000;
-	call stk_const;
-	pop de;
-	pop af;
-	dec a;
-	jr skip_next;
+	dec b;								// reduce count
+	ret z;								// return if done
+	ld (de), a;							// stack a zero
+	inc de;								// next position in calculator stack
+	jr stk_zeros;						// loop until done
 
 ;	// THE 'MEMORY LOCATION' SUBROUTINE
 
 loc_mem:
-	ld c, a;
-	rlca;
-	rlca;
-	add a, c;
-	ld c, a;
-	ld b, 0;
-	add hl, bc;
-	ret;
+	ld c, a;							// parameter to C
+	rlca;								// multiply
+	rlca;								// by
+	add a, c;							// five
+	ld c, a;							// result
+	ld b, 0;							// to BC
+	add hl, bc;							// get base address
+	ret;								// end of subroutine
 
 ;	// THE 'GET FROM MEMORY AREA' SUBROUTINE
 
 fp_get_mem_xx:
-	push de;
-	ld hl, (mem);
-	call loc_mem;
-	call fp_move_fp;
-	pop hl;
-	ret;
+	ld hl, (mem);						// get pointer to memory area
+
+fp_get_mem_xx_2:
+	push de;							// stack result pointer
+	call loc_mem;						// get base address
+	call fp_move_fp;					// move five bytes
+	pop hl;								// unstack result pointer
+	ret;								// end of subroutine
 
 ;	// THE 'STACK A CONSTANT' SUBROUTINE
 
 fp_stk_con_xx:
-	ld h, d;
-	ld l, e;
-	exx;
-	push hl;
-	ld hl, table_con;
-	exx;
-	call skip_cons;
-	call stk_const;
-	exx;
-	pop hl;
-	exx;
-	ret;
+	ld hl, table_con;					// address of table of constants
+	jr fp_get_mem_xx_2;					// indirect exit to stack constant
 
 ;	// THE 'STORE IN MEMORY AREA' SUBROUTINE
 
 fp_st_mem_xx:
-	push hl;
-	ex de, hl;
-	ld hl, (mem);
-	call loc_mem;
-	ex de, hl;
-	call fp_move_fp;
-	ex de, hl;
-	pop hl;
-	ret;
+	push hl;							// stack result pointer
+	ex de, hl;							// source to DE
+	ld hl, (mem);						// pointer to memory area to HL
+	call loc_mem;						// get base address
+	ex de, hl;							// exchange pointers
+	ld c, 5;							// five bytes
+	ldir;								// copy
+	ex de, hl;							// exchange pointers
+	pop hl;								// unstack result pointer
+	ret;								// end of subroutine
 
 ;	// THE 'EXCHANGE' SUBROUTINE
 
 fp_exchange:
-	ld b, 5;
+	ld b, 5;							// five bytes
 
 swap_byte:
-	ld a, (de);
-	ld c, (hl);
-	ex de, hl;
-	ld (de), a;
-	ld (hl), c;
-	inc hl;
-	inc de;
-	djnz swap_byte;
-	ex de, hl;
-	ret;
+	ld a, (de);							// get each byte of second
+	ld c, a;							//
+	ld a, (hl);							// and first
+	ld (de), a;							// first number to (DE)
+	ld (hl), c;							// second number to (HL)
+	inc hl;								// consider next
+	inc de;								// pair of bytes
+	djnz swap_byte;						// exchange five bytes
+	ret;								// end of subroutine
 
-;	// THE 'SERIES GENERATOR ' SUBROUTINE 
+;	// THE 'SERIES GENERATOR ' SUBROUTINE
 fp_series_xx:
-	ld b, a;
-	call gen_ent_1;
+	ld b, a;							// parameter to B
+	call gen_ent_1;						// enter calc and set counter
 	defb duplicate;
 	defb addition;
 	defb st_mem_0;
@@ -337,8 +311,8 @@ g_loop:
 	defb st_mem_1;
 	defb subtract;
 	defb end_calc;
-	call fp_stk_data;
-	call gen_ent_2;
+	call fp_stk_data;					// b(r), 2 * b(r) * z - b(r - 1), a(r + 1)
+	call gen_ent_2;						// re-enter calc without disturbing breg
 	defb addition;
 	defb exchange;
 	defb st_mem_2;
@@ -347,20 +321,7 @@ g_loop:
 	defb get_mem_1;
 	defb subtract;
 	defb end_calc;
-	ret;
-
-;	// THE 'UNARY MINUS' OPERATION
-
-fp_negate:
-	ld a, (hl);
-	and a;
-	ret z;
-	inc hl;
-	ld a, (hl);
-	xor $80;
-	ld (hl), a;
-	dec hl;
-	ret;
+	ret;								// end of subroutine
 
 ;	// THE 'ABSOLUTE MAGNITUDE' FUNCTION
 
@@ -369,6 +330,19 @@ fp_abs:
 	res 7, (hl);
 	dec hl;
 	ret;
+
+;	// THE 'UNARY MINUS' OPERATION
+
+fp_negate:
+	ld a, (hl);							// get first byte
+	and a;								// zero?
+	ret z;
+	inc hl;								// next byte
+	ld a, (hl);
+	xor $80;
+	ld (hl), a;							// store second byte
+	dec hl;								// point to first byte
+	ret;								// end of subroutine
 
 ;	// THE 'SIGNUM' FUNCTION
 
@@ -389,18 +363,18 @@ fp_sgn:
 ;	// THE 'PEEK' FUNCTION
 
 fp_peek:
-	call find_int;
-	ld a, (bc);
-	jp stack_a;
+	call find_int;						// get address in BC
+	ld a, (bc);							// get byte
+	jp stack_a;							// indirect exit
 
 ;	// THE'USR' FUNCTION
 
 fp_usr:
-	call find_int;
-	ld hl, stack_bc;
-	push hl;
-	push bc;
-	ret;
+	call find_int;						// get address in BC
+	ld hl, stack_bc;					// stack
+	push hl;							// routine address
+	push bc;							// stack address
+	ret;								// end of subroutine
 
 ;	// THE 'GREATER THAN ZERO' OPERATION
 
@@ -408,8 +382,8 @@ fp_greater_0:
 	ld a, (hl);
 	and a;
 	ret z;
-	ld a, $ff;
-	jr sign_to_c;
+	ld a, $ff;							// sign byte
+	jr sign_to_c;						// immediate jump
 
 ;	// THE 'NOT' FUNCTION
 
@@ -422,16 +396,16 @@ fp_not:
 ;	// THE 'LESS THAN ZERO' OPERATION
 
 fp_less_0:
-	xor a;
+	xor a;								// LD A, 0
 
 sign_to_c:
-	inc hl;
-	xor (hl);
-	dec hl;
-	rlca;
+	inc hl;								// point to sign
+	xor (hl);							// carry reset if positive, set if negative
+	dec hl;								// restore result pointer
+	rlca;								// opposite effect from fp_greater_0
 
 fp_0_div_1:
-	push hl;
+	push hl;							// stack result pointer
 	ld b, $05;
 
 fp_zero:
@@ -441,7 +415,7 @@ fp_zero:
 	pop hl;
 	ret nc;
 	ld (hl), $81;
-	ret;
+	ret;								// end of subroutine
 
 ;	// THE 'OR ' OPERATION
 
@@ -450,7 +424,7 @@ fp_or:
 	and a;
 	ret z;
 	scf;
-	jr fp_0_div_1;
+	jr fp_0_div_1;						// immediate jump
 
 ;	// THE 'NUMBER AND NUMBER' OPERATION
 
@@ -458,7 +432,7 @@ fp_no_and_no:
 	ld a, (de);
 	and a;
 	ret nz;
-	jr fp_0_div_1;
+	jr fp_0_div_1;						// immediate jump
 
 ;	// THE 'string and number' operation
 
@@ -473,249 +447,243 @@ fp_str_and_no:
 	dec de;
 	ld (de), a;
 	pop de;
-	ret;
+	ret;								// end of subroutine
 
 ;	// THE 'COMPARISON' OPERATIONS
 
 fp_comparison:
-	ld a, b;
-	sub 8;
-	bit 2, a;
-	jr nz, ex_or_not;
-	dec a;
+	ld a, b;							// offset to A
+	bit 2, a;							// >= 4?
+	jr nz, ex_or_not;					// jump if not
+	dec a;								// reduce range
 
 ex_or_not:
-	rrca;
-	jr nc, nu_or_str;
-	push af;
-	push hl;
-	call fp_exchange;
-	pop de;
-	ex de, hl;
-	pop af;
+	rrca;								// set carry for >= and <
+	jr nc, nu_or_str;					// jump if carry flag not set
+	push af;							// stack AF
+	push hl;							// stack HL
+	call fp_exchange;					// exchange
+	pop de;								// unstack DE
+	ex de, hl;							// swap HL with DE
+	pop af;								// unstack AF
 
 nu_or_str:
-	bit 2, a;
-	jr nz, strings;
-	rrca;
-	push af;
-	call fp_subtract;
-	jr end_tests;
+	rrca;								// update carry flag
+	push af;							// stack it
+	bit 2, a;							// string comparison?
+	jr nz, strings;						// jump if so
+	call fp_subtract;					// subtraction
+	jr end_tests;						// end of subroutine
 
 strings:
-	rrca;
-	push af;
-	call stk_fetch;
-	push de;
-	push bc;
-	call stk_fetch;
-	pop hl;
+	call stk_fetch;						// length and start address of second string
+	push de;							// stack
+	push bc;							// them
+	call stk_fetch;						// first string
+	pop hl;								// unstack second string length
 
 byte_comp:
-	ld a, h;
-	or l;
-	ex (sp), hl;
-	ld a, b;
-	jr nz, sec_plus;
-	or c;
+	ld a, h;							// is second
+	or l;								// string null?
+	ex (sp), hl;						// swap HL with (SP)
+	ld a, b;							// 
+	jr nz, sec_plus;					// jump if not null
+	or c;								// both null?
 
 secnd_low:
-	pop bc;
-	jr z, both_null;
-	pop af;
-	ccf;
-	jr str_test;
+	pop bc;								// unstack BC
+	jr z, both_null;					// jump if so
+	pop af;								// restore carry flag
+	ccf;								// and complement
+	jr str_test;						// immediate jump
 
 both_null:
-	pop af;
-	jr str_test;
+	pop af;								// restore carry flag
+	jr str_test;						// immediate jump
 
 sec_plus:
-	or c;
-	jr z, frst_less;
-	ld a, (de);
-	sub (hl);
-	jr c, frst_less;
-	jr nz, secnd_low;
-	dec bc;
-	inc de;
-	inc hl;
-	ex (sp), hl;
-	dec hl;
-	jr byte_comp;
+	or c;								// first less?
+	jr z, frst_less;					// jump if so
+	ld a, (de);							// compare
+	sub (hl);							// next byte
+	jr c, frst_less;					// jump if first byte less
+	jr nz, secnd_low;					// jump if second byte less
+	dec bc;								// bytes equal
+	inc de;								// reduce
+	inc hl;								// lengths
+	ex (sp), hl;						// and jump
+	dec hl;								// to compare
+	jr byte_comp;						// next byte
 
 frst_less:
-	pop bc;
-	pop af;
-	and a;
+	pop bc;								// unstack BC
+	pop af;								// unstack AF
+	and a;								// clear carry flag
 
 str_test:
-	push af;
-	rst fp_calc;
-	defb stk_zero;
-	defb end_calc;
+	push af;							// stack carry flag
+	rst fp_calc;						// x
+	defb stk_zero;						// x, 0
+	defb end_calc;						// exit calculator
 
 end_tests:
-	pop af;
-	push af;
-	call c, fp_not;
-	call fp_greater_0;
-	pop af;
-	rrca;
-	call nc, fp_not;
-	ret;
+	pop af;								// unstack carry flag
+	push af;							// restack carry flag
+	call c, fp_not;						// jump if set
+	call nc, fp_greater_0;				// jump if not set
+	pop af;								// unstack carry flag
+	rrca;								// rotate into carry
+	call nc, fp_not;					// jump if not set
+	ret;								// end of subroutine
 
 ;	// THE 'STRING CONCATENATION' OPERATION
 
 fp_strs_add:
-	call stk_fetch;
-	push de;
-	push bc;
-	call stk_fetch;
-	pop hl;
-	push hl;
-	push de;
-	push bc;
-	add hl, bc;
-	ld b, h;
-	ld c, l;
-	rst bc_spaces;
-	call stk_store;
-	pop bc;
-	pop hl;
-	ld a, b;
-	or c;
-	jr z, other_str;
-	ldir;
+	call stk_fetch;						// get parameters of
+	push de;							// second string
+	push bc;							// and stack them
+	call stk_fetch;						// get parameters of fisrt string
+	pop hl;								// unstack length to HL
+	push hl;							// and restack
+	push de;							// stack paramters
+	push bc;							// of fisrt string
+	add hl, bc;							// find total length
+	ld b, h;							// and store
+	ld c, l;							// in BC
+	rst bc_spaces;						// make space
+	call stk_store;						// parameters to calculator stack
+	pop bc;								// unstack first
+	pop hl;								// string parameters
+	call l_enter_1;						// else copy to workspace
 
 other_str:
-	pop bc;
-	pop hl;
-	ld a, b;
-	or c;
-	jr z, stk_pntrs;
-	ldir;
+	pop bc;								// unstack second
+	pop hl;								// string parameters
+	call l_enter_1;						// else copy to workspace
 
 ;	// THE 'STK_PNTRS' SUBROUTINE
 
 stk_pntrs:
-	ld hl, (stkend);
-	ld de, $fffb;
-	push hl;
-	add hl, de;
-	pop de;
-	ret;
+	ld hl, (stkend);					// stack end to HL
+
+stk_pntrs_2:
+	ld e, l	;							// DE points to second
+	ld d, h;							// operand
+	dec hl;								// make
+	dec hl;								// HL
+	dec hl;								// point
+	dec hl;								// to first
+	dec hl;								// operand
+	ret;								// end of subroutine
 
 ;	// THE 'CHR$' FUNCTION
 
 fp_chrS:
-	call fp_to_a;
-	jr c, report_b2;
-	jr nz, report_b2;
-	push af;
-	ld bc, $0001;
+	call fp_to_a;						// last value to A
+	jr c, report_b2;					// error if greater than 255
+	jr nz, report_b2;					// or negative
+	ld bc, 1;							// make one space
 	rst bc_spaces;
-	pop af;
-	ld (de), a;
-	call stk_store;
-	ex de, hl;
-	ret;
+	ld (de), a;							// value to workspace
+	jr fp_strS_1;						// exit
 
 report_b2:
-	rst error_1 ;
+	rst error_1;
 	defb integer_out_of_range;
 
 ;	// THE 'VAL' FUNCTION
 
 fp_val:
-	ld hl, (ch_add);
-	push hl;
-	call stk_fetch;
-	push de;
-	inc bc;
-	rst bc_spaces;
-	pop hl;
-	ld (ch_add), de;
-	push de;
-	ldir;
-	ex de, hl;
-	dec hl;
-	ld (hl), ctrl_newline;
-	res 7, (iy + _flags);
-	call class_6;
-	call check_2;
-	pop hl;
-	ld (ch_add), hl;
-	set 7, (iy + _flags);
-	call scanning;
-	pop hl;
-	ld (ch_add), hl;
-	jr stk_pntrs;
+	rst get_ch;							// get current value of ch-add
+	push hl;							// stack it
+	call stk_fetch;						// get parameters
+	push de;							// stack start address
+	inc bc;								// increase length by one
+	rst bc_spaces;						// make space
+	pop hl;								// unstack start address
+	ld (ch_add), de;					// pointer to ch_add
+	push de;							// stack it
+	ldir;								// copy the string to the workspace
+	ex de, hl;							// swap pointers
+	dec hl;								// last byte of string
+	ld (hl), ctrl_newline;				// replace with carriage return
+	res 7, (iy + _flags);				// reset syntax flag
+	call class_6;						// check syntax
+	call check_2;						// end of expression?
+	pop hl;								// unstack start address
+	ld (ch_add), hl;					// start address to ch_add
+	set 7, (iy + _flags);				// set line execution flag
+	call scanning;						// use string as next expression
+	pop hl;								// get last value
+	ld (ch_add), hl;					// and restore ch_add
+	jr stk_pntrs;						// exit and reset pointers
 
 ;	// THE 'STR$' FUNCTION
 
 fp_strS:
-	ld bc, $0001;
+	ld bc, 1;							// make one space
 	rst bc_spaces;
-	ld (hl), ctrl_newline;
-	ld hl, (s_posn);
-	push hl;
-	ld l, $ff;
+	ld (hl), ctrl_newline;				// put newline
+	ld hl, (s_posn);					// get column/line
+	push hl;							// stack it
+	ld a, $ff;							// channel W
 	ld (s_posn), hl;
 	ld hl, (df_cc);
-	push hl;
+	push hl;							// stack it
 	ld (df_cc), de;
 	push de;
-	call print_fp;
+	call print_fp;						// print last value
 	pop de;
 	ld hl, (df_cc);
-	and a;
-	sbc hl, de;
-	ld b, h;
-	ld c, l;
+	and a;								// calculate
+	sbc hl, de;							// length
+	ld b, h;							// store in 
+	ld c, l;							// BC
 	pop hl;
 	ld (df_cc), hl;
 	pop hl;
 	ld (s_posn), hl;
-	call stk_store;
-	ex de, hl;
-	ret;
+
+fp_strS_1:
+	call stk_store;						// parameters to calculator stack
+	ex de, hl;							// reset pointers
+	ret;								// end of subroutine
 
 ;	// THE 'CODE' FUNCTION
 
 fp_code:
-	call stk_fetch;
-	ld a, b;
-	or c;
-	jr z, stk_code;
-	ld a, (de);
+	call stk_fetch;						// get string parameters
+	ld a, b;							// test for
+	or c;								// zero
+	jr z, stk_code;						// jump with null string
+	ld a, (de);							// code of first character to A
 
 stk_code:
-	jp stack_a;
+	jp stack_a;							// exit and return value
 
 ;	// THE 'LEN' FUNCTION
 
 fp_len:
-	call stk_fetch;
-	jp stack_bc;
+	call stk_fetch;						// get string parameters
+	jp stack_bc;						// exit and return length
 
 ;	// THE 'DECREASE THE COUNTER' SUBROUTINE
 
 fp_dec_jr_nz:
-	exx;
-	push hl;
-	ld hl, breg;
-	dec (hl);
-	pop hl;
-	jr nz, jump_2;
-	inc hl;
-	exx;
-	ret;
+	exx;								// alternate register set
+	push hl;							// stack literal pointer
+	ld hl, breg;						// get breg (counter)
+	dec (hl);							// reduce it
+	pop hl;								// unstack literal pointer
+	jr nz, jump_2;						// jump if not zero
+	inc hl;								// next literal
+	exx;								// main register set
+	ret;								// end of subroutine
 
 ;	// THE 'JUMP' SUBROUTINE
 
 fp_jump:
-	exx;
+	exx;								// alternate register set
 
 jump_2:
 	ld e, (hl);
@@ -745,18 +713,18 @@ fp_jump_true:
 
 fp_n_mod_m:
 	rst fp_calc;
-	defb st_mem_0;
+	defb st_mem_1;
 	defb delete;
 	defb duplicate;
-	defb get_mem_0;
+	defb get_mem_1;
 	defb division;
 	defb int;
-	defb get_mem_0;
+	defb get_mem_1;
 	defb exchange;
-	defb st_mem_0;
+	defb st_mem_1;
 	defb multiply;
 	defb subtract;
-	defb get_mem_0;
+	defb get_mem_1;
 	defb end_calc;
 	ret;
 
@@ -824,14 +792,14 @@ report6_2:
 	defb arithmetic_overflow;
 
 n_negtv:
-	jr c, rslt_zero;
-	sub (hl);
-	jr nc, rslt_zero;
-	neg;
+	jr c, rslt_zero;					// zero if n < -255
+	sub (hl);							// subtract abs(n)
+	jr nc, rslt_zero;					// zero if e < zero
+	neg;								// -e to +e
 
 result_ok:
-	ld (hl), a;
-	ret;
+	ld (hl), a;							// store exponent
+	ret;								// exit
 
 rslt_zero:
 	rst fp_calc;
@@ -854,11 +822,9 @@ report_a:
 	defb invalid_argument;
 
 valid:
-	defb stk_zero;
-	defb delete;
 	defb end_calc;
-	ld a, (hl);
-	ld (hl), $80;
+	ld a, (hl);							// exponent to A
+	ld (hl), $80;						// x to x'
 	call stack_a;
 	rst fp_calc;
 	defb stk_data;
@@ -1087,12 +1053,33 @@ fp_acs:
 ;	// THE 'SQUARE ROOT' FUNCTION
 
 fp_sqr:
-	rst fp_calc;
-	defb duplicate;
-	defb fn_not;
-	defb jump_true, last -$ - 1;
-	defb stk_half;
-	defb end_calc;
+	rst fp_calc;						// x
+	defb st_mem_0;						// store in mem-0
+	defb end_calc;						// exit calculator
+	ld a, (hl);							// value to A
+	and a;								// test against zero
+	ret z;								// return if so
+	add a, 128;							// set carry if greater or equal to 128
+	rra;								// divide by two
+	ld (hl), a;							// replace value
+	inc hl;								// next location
+	ld a, (hl);							// get sign bit
+	rla;								// rotate left
+	jp c, report_a;						// error with negative number
+	ld (hl), 127;						// mantissa starts at about one
+	ld b, 5;							// set counter
+
+fp_sqr_1:
+	rst fp_calc;						// x
+	defb duplicate;						// x, x
+	defb get_mem_0;						// x, x, n
+	defb exchange;						// x, n, x
+	defb division;						// x, n / x
+	defb addition;						// x + n / x
+	defb end_calc;						// exit calculator
+	dec (hl);							// halve value
+	djnz fp_sqr_1;						// loop until found
+	ret;								// end of subroutine
 
 ;	// THE 'EXPONENTIATION' OPERATION
 
@@ -1116,9 +1103,9 @@ xis0:
 	defb exchange;
 	defb greater_0;
 	defb jump_true, last - $ - 1;
-	defb stk_one;
-	defb exchange;
-	defb division;
+	defb end_calc;
+	rst error_1;
+	defb arithmetic_overflow;
 
 one:
 	defb delete;
@@ -1129,4 +1116,4 @@ last:
 	ret;
 
 spare:
-	defb $ff;
+	defs 19, $ff;						// 19 spare bytes

@@ -15,7 +15,7 @@
 ;	// along with this program; if not, write to the Free Software
 ;	// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-include "open81.def";					// label definitions and X80 instruction set
+include "open81.inc";					// label definitions and X80 instruction set
 
 include "01_restarts.asm";
 include "02_data.asm";
