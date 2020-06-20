@@ -60,9 +60,9 @@ test_sp:
 ;next_ch:
 	call ch_add_inc;
 	jr test_sp;
-
-ver_num:
-	defb "250";							// version number (example: 2.5.0)
+	defb $ff;
+	defb $ff;
+	defb $ff;
 
 ;	// THE 'FP-CALCULATOR' RESTART
 

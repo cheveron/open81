@@ -192,11 +192,6 @@ truncate		equ	$36;
 calc_2			equ	$37;
 e_to_fp			equ	$38;
 
-sub_one         equ $39;
-mul_by_two      equ $3a;
-mul_by_ten      equ $3b;
-stk_square      equ $3c;
-
 stk_zero		equ	$a0;
 stk_one			equ	$a1;
 stk_half		equ	$a2;

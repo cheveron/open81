@@ -20,9 +20,7 @@
 ;	// by Dr. Ian Logan & Dr. Frank O'Hara
  
 ;	// THE 'FONT'
- 
-	org $1e00
-
+	 
 font:
 	defb $00, $00, $00, $00, $00, $00, $00, $00;	// 
 	defb $f0, $f0, $f0, $f0, $00, $00, $00, $00;	// '
