@@ -594,7 +594,8 @@ report_b2:
 ;	// THE 'VAL' FUNCTION
 
 fp_val:
-	rst get_ch;							// get current value of ch-add
+	ld hl, (ch_add);					// get current value of ch-add
+;	rst get_ch;							// shorter but slower
 	push hl;							// stack it
 	call stk_fetch;						// get parameters
 	push de;							// stack start address
@@ -626,7 +627,7 @@ fp_strS:
 	ld (hl), ctrl_newline;				// put newline
 	ld hl, (s_posn);					// get column/line
 	push hl;							// stack it
-	ld a, $ff;							// channel W
+	ld l, $ff;
 	ld (s_posn), hl;
 	ld hl, (df_cc);
 	push hl;							// stack it
@@ -1116,4 +1117,4 @@ last:
 	ret;
 
 spare:
-	defs 19, $ff;						// 19 spare bytes
+	defs font - $, $ff;					// 19 spare bytes
