@@ -19,7 +19,7 @@
 ;	// The Complete Timex TS1000 / Sinclair ZX81 ROM disassembly
 ;	// by Dr. Ian Logan & Dr. Frank O'Hara
 
-	org $1915;	// addresses prior to this point are identical to version 2
+;	org $1915;	// addresses prior to this point are identical to version 2
 
 ;	// THE 'CALCULATOR' TABLES
 
