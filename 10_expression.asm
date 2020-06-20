@@ -26,40 +26,51 @@ scanning:
 	ld b, $00;
 	push bc;
 
+;	// fast RND function
 s_rnd:
-	cp $40;
-	jr nz, s_pi;
-	call syntax_z;
-	jr z, s_rnd_end;
-	ld bc, (seed);
-	call stack_bc;
-	rst fp_calc;
-	defb stk_one;
-	defb addition;
-	defb stk_data;
-	defb $37;
-	defb $16;
-	defb multiply;
-	defb stk_data;
-	defb $80;
-	defb $41;
-	defb $00, $00, $80;
-	defb n_mod_m;
-	defb delete;
-	defb stk_one;
-	defb subtract;
-	defb duplicate;
-	defb end_calc;
-	call fp_to_bc;
-	ld (seed), bc;
-	ld a, (hl);
-	and a;
-	jr z, s_rnd_end;
-	sub 16;
-	ld (hl), a;
+	call syntax_z;						// checking syntax?
+	jr z, s_pi_end;						// jump if not
+	ld hl, (seed);						// get current value of seed
+	ld e, l;							// store it
+	ld d, h;							// in DE
+	xor a;								//
+	ld bc, $062c;						// B = loop counter, C = %00101100 (read bit by bit in reverse)
 
-s_rnd_end:
-	jr s_pi_end;
+rndl:
+	adc hl, hl;							//
+	adc a, a;							//
+	rl c;								//
+	jr nc, noadd;						//
+	and a;								// ccf but faster
+	adc hl, de;							//
+	adc a, 0;							//
+
+noadd:
+	djnz rndl;							//
+	ld c, 75;							//
+	adc hl, bc;							//
+	adc a, b;							//
+;
+	jr z, nomod;						//
+	ld c, a;							//
+	sbc hl, bc;							//
+	jr c, domod;						//
+
+nomod:
+	dec hl;								//
+
+domod:
+	ld (seed), hl;						//
+	ld c, l;							//
+	ld b, h;							//
+	call stack_bc;						//
+;
+	ld a, (hl);							//
+	or a;								//
+	jr z, s_pi_end;						//
+	sub $10;							// 
+	ld (hl), a;							//
+	jr s_pi_end;						//
 	
 s_pi:
 	cp $42;
