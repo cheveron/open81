@@ -62,7 +62,7 @@ test_sp:
 	jr test_sp;
 
 ver_num:
-	defb "250";							// version number (example: 2.5.0)
+	defb "251";							// version number (example: 2.5.0)
 
 ;	// THE 'FP-CALCULATOR' RESTART
 

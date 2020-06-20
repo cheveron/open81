@@ -437,16 +437,16 @@ fp_no_and_no:
 ;	// THE 'string and number' operation
 
 fp_str_and_no:
-	ld a, (de);
-	and a;
-	ret nz;
-	push de;
-	dec de;
-	xor a;
-	ld (de), a;
-	dec de;
-	ld (de), a;
-	pop de;
+	ld a, (de);							// get first byte
+	and a;								// test for zero
+	ret nz;								// return if not zero
+	dec de;								// point to fifth string byte
+	xor a;								// LD A, 0
+	ld (de), a;							// zero high byte of length
+	dec de;								// point to fourth string byte
+	ld (de), a;							// zero low byte of length
+	inc de;								// restore
+	inc de;								// pointer
 	ret;								// end of subroutine
 
 ;	// THE 'COMPARISON' OPERATIONS
@@ -1117,4 +1117,4 @@ last:
 	ret;
 
 spare:
-	defs font - $, $ff;					// 19 spare bytes
+;	defs font - $, $ff;					// 19 spare bytes
