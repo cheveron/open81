@@ -599,12 +599,13 @@ fp_chrS:
 	call fp_to_a;
 	jr c, report_b2;
 	jr nz, report_b2;
-	push af;
 	ld bc, $0001;
 	rst bc_spaces;
-	pop af;
 	ld (de), a;
-	jr fp_strS_1;
+;	jr fp_strS_1;						// replaces next three lines
+	call stk_store;
+	ex de, hl;
+	ret;
 
 report_b2:
 	rst error_1 ;
@@ -1136,5 +1137,5 @@ last:
 	ret;
 
 spare:
-	defb $ff, $ff;						// 2 spare bytes
+	defb $a0;							// spare byte
 
