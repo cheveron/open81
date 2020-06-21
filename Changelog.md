@@ -25,6 +25,15 @@ This version applies the canonical bug-fixes to the Version 2 ROM while retainin
 * Shorter `swap_byte`.
 * Moved `fp_negate` for consistency with SE Basic IV.
 * Shorter `fp_comparison`.
+* (Optional) shorter `fp_strs_add`.
+* Faster `stk_pntrs`.
+* Shorter `first_38`.
+* Shorter `fp_chrS`.
+* (Optional) shorter `fp_val`.
+* Shorter `valid`.
+* Faster `fp_sqr`.
+* Faster `xis0`.
+* 2 `spare` bytes.
 
 `13_font.asm`
 * Added `org` to `font`.

@@ -128,14 +128,19 @@ scan_ent:
 	jr ent_table;
 
 first_38:
-	cp 24;
-	jr nc, double_a;
-	exx;
-	ld bc, $fffb;
-	ld d, h;
-	ld e, l;
-	add hl, bc;
-	exx;
+;	cp 24;
+;	jr nc, double_a;
+;	exx;
+;	ld bc, $fffb;
+;	ld d, h;
+;	ld e, l;
+;	add hl, bc;
+;	exx;
+	cp 24;								// unary operation?
+	jr nc, double_a;					// jump if so
+	exx;								// main register set
+	call stk_pntrs_2;					// get pointers to operands
+	exx;								// alternate register set
 
 double_a:
 	rlca;
@@ -543,21 +548,22 @@ end_tests:
 ;	// THE 'STRING CONCATENATION' OPERATION
 
 fp_strs_add:
-	call stk_fetch;
-	push de;
-	push bc;
-	call stk_fetch;
-	pop hl;
-	push hl;
-	push de;
-	push bc;
-	add hl, bc;
-	ld b, h;
-	ld c, l;
-	rst bc_spaces;
-	call stk_store;
-	pop bc;
-	pop hl;
+	call stk_fetch;						// get parameters of
+	push de;							// second string
+	push bc;							// and stack them
+	call stk_fetch;						// get parameters of fisrt string
+	pop hl;								// unstack length to HL
+	push hl;							// and restack
+	push de;							// stack paramters
+	push bc;							// of fisrt string
+	add hl, bc;							// find total length
+	ld b, h;							// and store
+	ld c, l;							// in BC
+	rst bc_spaces;						// make space
+	call stk_store;						// parameters to calculator stack
+	pop bc;								// unstack first
+	pop hl;								// string parameters
+;	call l_enter_1;						// can replace next four lines
 	ld a, b;
 	or c;
 	jr z, other_str;
@@ -566,6 +572,7 @@ fp_strs_add:
 other_str:
 	pop bc;
 	pop hl;
+;	call l_enter_1;						// can replace next four lines
 	ld a, b;
 	or c;
 	jr z, stk_pntrs;
@@ -574,12 +581,17 @@ other_str:
 ;	// THE 'STK_PNTRS' SUBROUTINE
 
 stk_pntrs:
-	ld hl, (stkend);
-	ld de, $fffb;
-	push hl;
-	add hl, de;
-	pop de;
-	ret;
+	ld hl, (stkend);					// stack end to HL
+
+stk_pntrs_2:
+	ld e, l	;							// DE points to second
+	ld d, h;							// operand
+	dec hl;								// make
+	dec hl;								// HL
+	dec hl;								// point
+	dec hl;								// to first
+	dec hl;								// operand
+	ret;								// end of subroutine
 
 ;	// THE 'CHR$' FUNCTION
 
@@ -592,9 +604,7 @@ fp_chrS:
 	rst bc_spaces;
 	pop af;
 	ld (de), a;
-	call stk_store;
-	ex de, hl;
-	ret;
+	jr fp_strS_1;
 
 report_b2:
 	rst error_1 ;
@@ -603,6 +613,7 @@ report_b2:
 ;	// THE 'VAL' FUNCTION
 
 fp_val:
+;	rst get_ch;							// shorter but slower replacement for next line
 	ld hl, (ch_add);
 	push hl;
 	call stk_fetch;
@@ -652,6 +663,8 @@ fp_strS:
 	ld (df_cc), hl;
 	pop hl;
 	ld (s_posn), hl;
+
+fp_strS_1:
 	call stk_store;
 	ex de, hl;
 	ret;
@@ -829,8 +842,6 @@ report_a:
 	defb invalid_argument;
 
 valid:
-	defb stk_zero;
-	defb delete;
 	defb end_calc;
 	ld a, (hl);
 	ld (hl), $80;
@@ -1062,12 +1073,33 @@ fp_acs:
 ;	// THE 'SQUARE ROOT' FUNCTION
 
 fp_sqr:
-	rst fp_calc;
-	defb duplicate;
-	defb fn_not;
-	defb jump_true, last -$ - 1;
-	defb stk_half;
-	defb end_calc;
+	rst fp_calc;						// x
+	defb st_mem_0;						// store in mem-0
+	defb end_calc;						// exit calculator
+	ld a, (hl);							// value to A
+	and a;								// test against zero
+	ret z;								// return if so
+	add a, 128;							// set carry if greater or equal to 128
+	rra;								// divide by two
+	ld (hl), a;							// replace value
+	inc hl;								// next location
+	ld a, (hl);							// get sign bit
+	rla;								// rotate left
+	jp c, report_a;						// error with negative number
+	ld (hl), 127;						// mantissa starts at about one
+	ld b, 5;							// set counter
+
+fp_sqr_1:
+	rst fp_calc;						// x
+	defb duplicate;						// x, x
+	defb get_mem_0;						// x, x, n
+	defb exchange;						// x, n, x
+	defb division;						// x, n / x
+	defb addition;						// x + n / x
+	defb end_calc;						// exit calculator
+	dec (hl);							// halve value
+	djnz fp_sqr_1;						// loop until found
+	ret;								// end of subroutine
 
 ;	// THE 'EXPONENTIATION' OPERATION
 
@@ -1091,9 +1123,9 @@ xis0:
 	defb exchange;
 	defb greater_0;
 	defb jump_true, last - $ - 1;
-	defb stk_one;
-	defb exchange;
-	defb division;
+	defb end_calc;
+	rst error_1;
+	defb arithmetic_overflow;
 
 one:
 	defb delete;
@@ -1104,4 +1136,5 @@ last:
 	ret;
 
 spare:
-	defb $ff;
+	defb $ff, $ff;						// 2 spare bytes
+

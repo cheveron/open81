@@ -885,6 +885,8 @@ l_in_w_s:
 
 l_enter:
 	ex de, hl;
+
+l_enter_1:
 	ld a, b;
 	or c;
 	ret z;
