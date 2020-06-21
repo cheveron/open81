@@ -15,5 +15,16 @@ This version applies the canonical bug-fixes to the Version 2 ROM while retainin
 * Fixed bug in `out_zeros`.
 * Fixed bug in `count_one`.
 
+`12_calculator.asm`
+* Added comments from SE Basic IV.
+* Now `table_cons` stored in full.
+* Added `stk_pntrs_2` entry point.
+* Removed redundant `skip_cons`.
+* Simpler `fp_stk_con_xx`.
+* Faster `fp_st_mem_xx`.
+* Shorter `swap_byte`.
+* Moved `fp_negate` for consistency with SE Basic IV.
+* Shorter `fp_comparison`.
+
 `13_font.asm`
 * Added `org` to `font`.

@@ -1164,9 +1164,9 @@ nxt_dgt_1:
 	rst fp_calc;
 	defb get_mem_0;
 	defb stk_ten;
-	defb division ; should be multiply;
+	defb multiply;
 	defb st_mem_0;
-	defb multiply ; should be division;
+	defb division;
 	defb addition;
 	defb end_calc;
 	jr nxt_dgt_1;

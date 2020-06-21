@@ -22,11 +22,11 @@
 ;	// THE 'CALCULATOR' TABLES
 
 table_con:
-	defb $00, $b0, $00;				// 0
-	defb $31, $00;					// 1
-	defb $30, $00;					// 1/2
-	defb $f1, $49, $0f, $da, $a2;	// PI/2
-	defb $34, $20;					// 10
+	defb $00, $00, $00, $00, $00;	// 0
+	defb $81, $00, $00, $00, $00;	// 1
+	defb $80, $00, $00, $00, $00;	// 1/2
+	defb $81, $49, $0f, $da, $a2;	// PI/2
+	defb $84, $20, $00, $00, $00;	// 10
 
 table_adr:
 	defw fp_jump_true;
@@ -234,22 +234,6 @@ stk_zeros:
 	inc de;
 	jr stk_zeros;
 
-;	// THE 'SKIP CONSTANTS' SUBROUTINE
-
-skip_cons:
-	and a;
-
-skip_next:
-	ret z;
-	push af;
-	push de;
-	ld de, $0000;
-	call stk_const;
-	pop de;
-	pop af;
-	dec a;
-	jr skip_next;
-
 ;	// THE 'MEMORY LOCATION' SUBROUTINE
 
 loc_mem:
@@ -265,41 +249,34 @@ loc_mem:
 ;	// THE 'GET FROM MEMORY AREA' SUBROUTINE
 
 fp_get_mem_xx:
-	push de;
-	ld hl, (mem);
-	call loc_mem;
-	call fp_move_fp;
-	pop hl;
-	ret;
+	ld hl, (mem);						// get pointer to memory area
+
+fp_get_mem_xx_2:
+	push de;							// stack result pointer
+	call loc_mem;						// get base address
+	call fp_move_fp;					// move five bytes
+	pop hl;								// unstack result pointer
+	ret;								// end of subroutine
 
 ;	// THE 'STACK A CONSTANT' SUBROUTINE
 
 fp_stk_con_xx:
-	ld h, d;
-	ld l, e;
-	exx;
-	push hl;
-	ld hl, table_con;
-	exx;
-	call skip_cons;
-	call stk_const;
-	exx;
-	pop hl;
-	exx;
-	ret;
+	ld hl, table_con;					// address of table of constants
+	jr fp_get_mem_xx_2;					// indirect exit to stack constant
 
 ;	// THE 'STORE IN MEMORY AREA' SUBROUTINE
 
 fp_st_mem_xx:
-	push hl;
-	ex de, hl;
-	ld hl, (mem);
-	call loc_mem;
-	ex de, hl;
-	call fp_move_fp;
-	ex de, hl;
-	pop hl;
-	ret;
+	push hl;							// stack result pointer
+	ex de, hl;							// source to DE
+	ld hl, (mem);						// pointer to memory area to HL
+	call loc_mem;						// get base address
+	ex de, hl;							// exchange pointers
+	ld c, 5;							// five bytes
+	ldir;								// copy
+	ex de, hl;							// exchange pointers
+	pop hl;								// unstack result pointer
+	ret;								// end of subroutine
 
 ;	// THE 'EXCHANGE' SUBROUTINE
 
@@ -307,16 +284,15 @@ fp_exchange:
 	ld b, 5;
 
 swap_byte:
-	ld a, (de);
-	ld c, (hl);
-	ex de, hl;
-	ld (de), a;
-	ld (hl), c;
-	inc hl;
-	inc de;
-	djnz swap_byte;
-	ex de, hl;
-	ret;
+	ld a, (de);							// get each byte of second
+	ld c, a;							//
+	ld a, (hl);							// and first
+	ld (de), a;							// first number to (DE)
+	ld (hl), c;							// second number to (HL)
+	inc hl;								// consider next
+	inc de;								// pair of bytes
+	djnz swap_byte;						// exchange five bytes
+	ret;								// end of subroutine
 
 ;	// THE 'SERIES GENERATOR ' SUBROUTINE
 fp_series_xx:
@@ -349,19 +325,6 @@ g_loop:
 	defb end_calc;
 	ret;
 
-;	// THE 'UNARY MINUS' OPERATION
-
-fp_negate:
-	ld a, (hl);
-	and a;
-	ret z;
-	inc hl;
-	ld a, (hl);
-	xor $80;
-	ld (hl), a;
-	dec hl;
-	ret;
-
 ;	// THE 'ABSOLUTE MAGNITUDE' FUNCTION
 
 fp_abs:
@@ -369,6 +332,19 @@ fp_abs:
 	res 7, (hl);
 	dec hl;
 	ret;
+
+;	// THE 'UNARY MINUS' OPERATION
+
+fp_negate:
+	ld a, (hl);							// get first byte
+	and a;								// zero?
+	ret z;
+	inc hl;								// next byte
+	ld a, (hl);
+	xor $80;
+	ld (hl), a;							// store second byte
+	dec hl;								// point to first byte
+	ret;								// end of subroutine
 
 ;	// THE 'SIGNUM' FUNCTION
 
@@ -478,11 +454,10 @@ fp_str_and_no:
 ;	// THE 'COMPARISON' OPERATIONS
 
 fp_comparison:
-	ld a, b;
-	sub 8;
-	bit 2, a;
-	jr nz, ex_or_not;
-	dec a;
+	ld a, b;							// offset to A
+	bit 2, a;							// >= 4?
+	jr nz, ex_or_not;					// jump if not
+	dec a;								// reduce range
 
 ex_or_not:
 	rrca;
