@@ -318,7 +318,7 @@ swap_byte:
 	ex de, hl;
 	ret;
 
-;	// THE 'SERIES GENERATOR ' SUBROUTINE 
+;	// THE 'SERIES GENERATOR ' SUBROUTINE
 fp_series_xx:
 	ld b, a;
 	call gen_ent_1;
